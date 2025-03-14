@@ -1,0 +1,59 @@
+cabal-version:      3.0
+name:               Impl
+version:            0.1.0.0
+license:            MIT
+license-file:       LICENSE
+author:             Gabriel Desfrene
+maintainer:         gabriel@desfrene.fr
+category:           Testing
+build-type:         Simple
+description:        Test on Verilog Typing System
+synopsis:           Tests
+
+common warnings
+    ghc-options: -Wall
+
+executable Impl
+    import:           warnings
+    main-is:          Main.hs
+
+    -- Modules included in this executable, other than Main.
+    other-modules:
+        Internal.Ast,
+        Ast,
+        Context,
+        Frontend.Tokens,
+        Frontend.ParsingMonad,
+        Frontend.Reversed,
+        Graph
+
+    -- LANGUAGE extensions used by modules in this package.
+    -- other-extensions:
+
+    build-tool-depends:
+        alex:alex,
+        happy:happy
+
+    other-modules:
+        Frontend.Parser,
+        Frontend.Lexer
+
+    -- Other library packages from which modules are imported.
+    build-depends:
+        base ^>=4.20.0.0,
+        bytestring >= 0.12.1 && < 0.13,
+        containers >= 0.7 && < 0.8,
+        mtl >= 2.3.1 && < 2.4,
+        optparse-applicative >= 0.18.1 && < 0.19,
+        text >= 2.1.2 && < 2.2,
+        pretty-simple >= 4.1.3 && < 4.2,
+        union-find >= 0.1 && < 0.2,
+        array >= 0.5.7 && < 0.6,
+        graphviz >= 2999.20.2 && < 2999.21,
+        pretty-show >= 1.10 && < 1.11,
+        transformers >= 0.6.1 && < 0.7,
+        utf8-string,
+        Color
+
+    hs-source-dirs:   app
+    default-language: GHC2024
