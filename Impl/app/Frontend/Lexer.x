@@ -90,7 +90,6 @@ $white+                 ;
 ":"                     { token Colon }
 "{"                     { token OpenBrace }
 "}"                     { token CloseBrace }
-";"                     { token SemiColon }
 ","                     { token Comma }
 
 {

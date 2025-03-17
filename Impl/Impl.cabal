@@ -2,7 +2,6 @@ cabal-version:      3.0
 name:               Impl
 version:            0.1.0.0
 license:            MIT
-license-file:       LICENSE
 author:             Gabriel Desfrene
 maintainer:         gabriel@desfrene.fr
 category:           Testing
@@ -20,11 +19,11 @@ executable Impl
     -- Modules included in this executable, other than Main.
     other-modules:
         Internal.Ast,
-        Ast,
-        Context,
         Frontend.Tokens,
         Frontend.ParsingMonad,
         Frontend.Reversed,
+        Ast,
+        Context,
         Graph
 
     -- LANGUAGE extensions used by modules in this package.
@@ -35,25 +34,25 @@ executable Impl
         happy:happy
 
     other-modules:
-        Frontend.Parser,
-        Frontend.Lexer
+        Frontend.Lexer,
+        Frontend.Parser
 
     -- Other library packages from which modules are imported.
     build-depends:
         base ^>=4.20.0.0,
-        bytestring >= 0.12.1 && < 0.13,
+        Color >= 0.4.0 && < 0.5,
         containers >= 0.7 && < 0.8,
+        array >= 0.5.7 && < 0.6,
+        transformers >= 0.6.1 && < 0.7,
+        bytestring >= 0.12.1 && < 0.13,
         mtl >= 2.3.1 && < 2.4,
         optparse-applicative >= 0.18.1 && < 0.19,
         text >= 2.1.2 && < 2.2,
-        pretty-simple >= 4.1.3 && < 4.2,
-        union-find >= 0.1 && < 0.2,
-        array >= 0.5.7 && < 0.6,
         graphviz >= 2999.20.2 && < 2999.21,
         pretty-show >= 1.10 && < 1.11,
-        transformers >= 0.6.1 && < 0.7,
-        utf8-string,
-        Color
+        pretty-simple >= 4.1.3 && < 4.2,
+        union-find >= 0.1 && < 0.2,
+        utf8-string >= 1.0.2 && < 1.1
 
     hs-source-dirs:   app
     default-language: GHC2024

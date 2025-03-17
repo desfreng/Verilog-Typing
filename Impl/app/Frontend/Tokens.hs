@@ -80,6 +80,5 @@ data Token
   | OpenBrace
   | CloseBrace
   | Comma
-  | SemiColon
   | DoubleColon
   deriving (Show)

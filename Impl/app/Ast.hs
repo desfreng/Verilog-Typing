@@ -1,7 +1,7 @@
 module Ast
   ( ExprName (),
     ExprTag (),
-    ExprId (),
+    AstId (),
     Size (..),
     Operand (..),
     VerilogInteger (..),
@@ -14,15 +14,17 @@ module Ast
     PostUnaryOp (..),
     ReductionUnaryOp (..),
     Signedness (..),
+    LeftValue (..),
     Expr (),
     ExprKind (..),
     Ast (),
     astExprs,
-    exprFromId,
     idFromExpr,
     exprKind,
     topLevelExpr,
     exprFromTag,
+    leftSize,
+    idFromLValue,
   )
 where
 

@@ -1,6 +1,9 @@
 var x: 10
 var u: 1
-var y: 1
+var y: 20
+var tmp: 15
 
-expr id: x + (x = y) / x && 'b1001
-expr toto: u ? x : (tag :: x == x)
+# expr test: (u = x << y)
+expr tart: x + ({tmp, {tmp, tmp}} = x ? {y, 1'd1} : u) / x == 'b1001
+# expr toto: u ? x : (tag :: x == x)
+# expr concat: (x = f(1'd30, u))

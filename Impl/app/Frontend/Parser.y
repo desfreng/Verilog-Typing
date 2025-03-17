@@ -87,7 +87,6 @@ import Frontend.Tokens qualified as T
 %token ':'             { T.Colon }
 %token '{'             { T.OpenBrace }
 %token '}'             { T.CloseBrace }
-%token ';'             { T.SemiColon }
 %token ','             { T.Comma }
 
 
@@ -131,8 +130,8 @@ atomicExpr :: { Expr }
   | '(' ident '::' expr ')'           {% declareTag $2 $4 }
   | exprRange                         {% inExpr $ Concat $1 }
   | '{' int exprRange '}'             {% inExpr $ ReplConcat (fromEnum $ value $2) $3 }
-  | '(' ident binOpAssign expr ')'    {% parseAssign $2 $3 $4 }
-  | '(' ident shiftOpAssign expr ')'  {% parseShiftAssign $2 $3 $4 }
+  | '(' expr binOpAssign expr ')'     {% parseAssign $2 $3 $4 }
+  | '(' expr shiftOpAssign expr ')'   {% parseShiftAssign $2 $3 $4 }
   | 'signed' '(' expr ')'             {% inExpr $ (Cast Signed) $3 }
   | 'unsigned' '(' expr ')'           {% inExpr $ (Cast Unsigned) $3 }
 
@@ -152,7 +151,6 @@ unOpExpr :: { Expr }
   | '^'  atomicExpr   %prec UNARY     {% inExpr $ (Reduction RedXor) $2 }
   | '~^' atomicExpr   %prec UNARY     {% inExpr $ (Reduction RedNxor) $2 }
   | '^~' atomicExpr   %prec UNARY     {% inExpr $ (Reduction RedNxor) $2 }
-
 
 binOpExpr :: { Expr }
   : expr '+' expr                     {% inExpr $ (Arithmetic Addition) $1 $3 }

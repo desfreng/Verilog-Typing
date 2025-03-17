@@ -196,13 +196,17 @@ getOperand t =
       Nothing -> fail $ "The operand '" <> T.unpack t <> "' is not declared."
       Just size -> return $ Op t size
 
+genAstId :: Parsing AstId
+genAstId = Parsing . state $ \s -> (AId $ exprNextId s, incrState s)
+  where
+    incrState pState@PState {exprNextId = eId} = pState {exprNextId = eId + 1}
+
 inExpr :: ExprKind -> Parsing Expr
 inExpr eKind = do
-  exprId <- Parsing . state $ \s -> (EId $ exprNextId s, incrState s)
+  exprId <- genAstId
   let expr = E eKind exprId
    in (Parsing . tell $ addExprId exprId expr) $> expr
   where
-    incrState pState@PState {exprNextId = eId} = pState {exprNextId = eId + 1}
     addExprId eId eExpr =
       PWriter $
         Ast
@@ -212,18 +216,28 @@ inExpr eKind = do
             tagToId = mempty
           }
 
+buildLeftValue :: Expr -> Parsing LeftValue
+buildLeftValue (E e _) = go e
+  where
+    go (Operand op) = genAstId >>= return . LeftAtom op
+    go (Concat l) = do
+      lLeft <- mapM buildLeftValue l
+      let finalSize = foldl (+) 0 $ leftSize <$> lLeft
+       in genAstId >>= return . LeftConcat lLeft finalSize
+    go _ = fail "This is not a left value."
+
 parseOperand :: Text -> Parsing Expr
 parseOperand = getOperand >=> inExpr . Operand
 
-parseAssign :: Text -> AssignBinaryOp -> Expr -> Parsing Expr
+parseAssign :: Expr -> AssignBinaryOp -> Expr -> Parsing Expr
 parseAssign t op e = do
-  o <- parseOperand t
-  inExpr $ BinOpAssign o op e
+  lhs <- buildLeftValue t
+  inExpr $ BinOpAssign lhs op e
 
-parseShiftAssign :: Text -> ShiftBinaryOp -> Expr -> Parsing Expr
+parseShiftAssign :: Expr -> ShiftBinaryOp -> Expr -> Parsing Expr
 parseShiftAssign t op e = do
-  o <- parseOperand t
-  inExpr $ ShiftAssign o op e
+  lhs <- buildLeftValue t
+  inExpr $ ShiftAssign lhs op e
 
 runParsing :: Int -> Parsing () -> ByteString -> IO Ast
 runParsing defaultIntSize (Parsing m) content =

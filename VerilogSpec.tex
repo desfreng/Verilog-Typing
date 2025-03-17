@@ -64,46 +64,22 @@
 
 \section*{Verilog Size Checking}
 
-\subsection*{Set-Based Typing Rules}
+\subsection*{Finding the Context}
 
-The statement $\Gamma, \xi \vdash e: n$ mean:
+The statement $\vdash e: c$ mean:
 \begin{center}
-  In the variable context $\Gamma$ and the size context $\xi$, the size of the expression $e$ is $n$.
+  The context of the expression $e$ is $c$.
 \end{center}
 
 So we have:
 \begin{itemize}
-  \item $\Gamma: \mathcal{O} \to \mathbb{N}$ a mapping from operand to
-        their size, with $\mathcal{O}$ the set of operands,
-  \item $\xi \in \mathbb{N} \cup \left\{\ast\right\}$ a size context (with $\ast$ for the empty one).
   \item $e \in \mathcal{E}$, with $\mathcal{E}$ the set of expressions,
-  \item $n \in \mathcal{N}$, the size of the expression.
+  \item $c \in \mathcal{N}$, a context identifier.
 \end{itemize}
 
 We use the following notations:
 \begin{itemize}
-  \item
-        \begin{equation*}
-          \begin{array}{ccccl}
-            \ctx & \mathcal{E} & \to     & \mathbb{N} \cup \{\ast\}                           \\
-                 & x           & \mapsto & \Gamma(x)                                          \\
-                 & a \oplus b  & \mapsto & \max(\ctx(a), \ctx(b))   & \oplus \in \binOp       \\
-                 & \oplus a    & \mapsto & \ctx(a)                  & \oplus \in \preUnOp     \\
-                 & a \oplus    & \mapsto & \ctx(a)                  & \oplus \in \postUnOp    \\
-                 & \oplus(a)   & \mapsto & ?                        & \oplus \in \cast        \\
-                 & a \oplus b  & \mapsto & \ast                     & \oplus \in \comp        \\
-                 & a \oplus b  & \mapsto & \ast                     & \oplus \in \logic       \\
-                 & \oplus a    & \mapsto & \ast                     & \oplus \in \red         \\
-                 & a \oplus b  & \mapsto & \ctx(a)                  & \oplus \in \shift       \\
-                 & a \oplus b  & \mapsto & \Gamma(a)                & \oplus \in \assignBinOp \\
-                 & a \oplus b  & \mapsto & \Gamma(a)                & \oplus \in \assignShift \\
-                 & a \oplus b  & \mapsto & ?                                                  \\
-                 & a \oplus b  & \mapsto & ?                                                  \\
-                 & a \oplus b  & \mapsto & ?                                                  \\
-                 & a \oplus b  & \mapsto & ?                                                  \\
-                 & a \oplus b  & \mapsto & ?                                                  \\
-          \end{array}
-        \end{equation*}
+  \item $\ctx()$ create a fresh empty context.
 \end{itemize}
 
 
@@ -111,8 +87,7 @@ We use the following notations:
 
 \begin{equation*}
   \begin{prooftree}
-    \hypo{n = \Gamma(x) \bowtie \xi}
-    \infer1{\Gamma, \xi \vdash x: n}
+    \infer0{\vdash x: c}
   \end{prooftree}
 \end{equation*}
 
@@ -123,39 +98,38 @@ We use the following notations:
   \begin{array}{cc}
     \oplus \in \left\{
     \verb|+|, \verb|-|, \verb|*|,
-    \verb|/|, \verb|%|,  % chktex 14
+    \verb|/|, \verb|%|, % chktex 14
     \verb|&|,
     \verb-|-, \verb|^|, \verb|^|\mytilde,
     \mytilde\verb|^| \right\}
      &
     \begin{prooftree}
-      \hypo{\Gamma, \xi \vdash a: n}
-      \hypo{\Gamma, \xi \vdash b: n}
-      \infer2{\Gamma, \xi \vdash a \oplus b: n}
+      \hypo{\vdash a: c}
+      \hypo{\vdash b: c}
+      \infer2{\vdash a \oplus b: c}
     \end{prooftree}
     \\
     \oplus \in \left\{\verb|+|, \verb|-|, \verb|++|, \verb|--|, \mytilde\right\}
      &
     \begin{prooftree}
-      \hypo{\Gamma, \xi \vdash e: n}
-      \infer1{\Gamma, \xi \vdash \oplus e: n}
+      \hypo{\vdash e: c}
+      \infer1{\vdash \oplus e: c}
     \end{prooftree}
     \\
     \oplus \in \left\{\verb|++|, \verb|--|\right\}
      &
     \begin{prooftree}
-      \hypo{\Gamma, \xi \vdash e: n}
-      \infer1{\Gamma, \xi \vdash e \oplus: n}
+      \hypo{\vdash e: c}
+      \infer1{\vdash e \oplus: c}
     \end{prooftree}
     \\
     \oplus \in \left\{\verb|$signed|, \verb|$unsigned|,
     \verb|signed'|, \verb|unsigned'|\right\}
      &
     \begin{prooftree}
-      \hypo{\zeta = \max^{\ast}\left(\ctx\left(e\right)\right) }
-      \hypo{\Gamma, \zeta \vdash e: k}
-      \hypo{n = k \bowtie \xi}
-      \infer3{\Gamma, \xi \vdash \oplus \left(e\right): n}
+      \hypo{c' = \ctx()}
+      \hypo{\vdash e: c'}
+      \infer2{\vdash \oplus \left(e\right): c}
     \end{prooftree}
     \\
     \oplus \in \left\{
@@ -165,111 +139,110 @@ We use the following notations:
     \right\}
      &
     \begin{prooftree}
-      \hypo{\zeta = \max^{\ast}\left(\ctx\left(a\right) \cup \ctx\left(b\right)\right)}
-      \hypo{\Gamma, \zeta \vdash a: k}
-      \hypo{\Gamma, \zeta \vdash b: k}
-      \hypo{n = k \bowtie \xi}
-      \infer4{\Gamma, \xi \vdash a \oplus b: n}
+      \hypo{c' = \ctx()}
+      \hypo{\vdash a: c'}
+      \hypo{\vdash b: c'}
+      \infer3{\vdash a \oplus b: c}
     \end{prooftree}
     \\
-    %     %   \oplus \in \left\{
-    %     %   \verb|&&|, \verb-||-, \verb|->|,
-    %     %   \verb|<->| \right\}
-    %     %    &
-    %     %   \begin{prooftree}
-    %     %     \hypo{\Gamma \mid \ast \vdash a: \alpha,~\A} \hypo{\Gamma \mid
-    %     %       \ast \vdash b: \beta,~\B} \infer2{\Gamma \mid n \vdash a
-    %     %       \oplus b: \upsilon,~\left\{\upsilon \coloneq 1\bowtie
-    %     %       n\right\}}
-    %     %   \end{prooftree}
-    %     %   \\
-    %     %   \oplus \in \left\{
-    %     %   \verb|&|, \mytilde\verb|&|, \verb-|-, \mytilde\verb-|-, \verb|^|,
-    %     %   \mytilde\verb|^|, \verb|^|\mytilde,
-    %     %   \verb|!| \right\}
-    %     %    &
-    %     %   \begin{prooftree}
-    %     %     \hypo{\Gamma \mid \ast \vdash e: \epsilon,~\E}
-    %     %     \infer1{\Gamma \mid n \vdash \oplus e:
-    %     %       \epsilon,~\left\{\upsilon \coloneq 1 \bowtie
-    %     %       n\right\}}
-    %     %   \end{prooftree}
-    %     %   \\
-    %     %   \oplus \in \left\{
-    %     %   \verb|>>|, \verb|<<|, \verb|**|,
-    %     %   \verb|>>>|, \verb|<<<| \right\}
-    %     %    &
-    %     %   \begin{prooftree}
-    %     %     \hypo{\Gamma \mid n \vdash a: \alpha,~\A} \hypo{\Gamma
-    %     %       \mid \ast \vdash b: \beta,~\B} \infer2{\Gamma \mid n
-    %     %       \vdash a \oplus b: \alpha,~\A}
-    %     %   \end{prooftree}
-    %     %   \\
-    %     %   \oplus \in \left\{
-    %     %   \verb|=|, \verb|+=|, \verb|-=|,
-    %     %   \verb|*=|, \verb|/=|, \verb|%=|, % chktex 14
-    %     %   \verb|&=|, \verb-|=-, \verb|^=|  \right\}
-    %     %    &
-    %     %   \begin{prooftree}
-    %     %     \hypo{\Gamma \mid \ast \vdash a: \alpha,~\A} \hypo{\Gamma \mid
-    %     %       \Delta_{\A}(\alpha) \vdash b: \beta,~\B} \infer2{\Gamma \mid
-    %     %       n \vdash a \oplus b: \upsilon,~\left\{\upsilon \coloneqq
-    %     %       \Delta_{\A}(\alpha) \bowtie n\right\}}
-    %     %   \end{prooftree}
-    %     %   \\
-    %     %   \oplus \in \left\{
-    %     %   \verb|<<=|, \verb|>>=|, \verb|<<<=|, \verb|>>>=| \right\}
-    %     %    &
-    %     %   \begin{prooftree}
-    %     %     \hypo{\Gamma \mid \ast \vdash a: \alpha,~\A}
-    %     %     \hypo{\Gamma \mid c \ast \vdash b: \beta,~\B}
-    %     %     \infer2{\Gamma \mid n \vdash a \oplus b:
-    %     %       \upsilon,~\left\{\upsilon \coloneqq
-    %     %       \Delta_{\A}(\alpha) \bowtie n\right\}}
-    %     %   \end{prooftree}
+    \oplus \in \left\{
+    \verb|&&|, \verb-||-, \verb|->|,
+    \verb|<->| \right\}
+     &
+    \begin{prooftree}
+      \hypo{c' = \ctx()}
+      \hypo{\vdash a: c'}
+      \hypo{c'' = \ctx()}
+      \hypo{\vdash b: c''}
+      \infer4{\vdash a  \oplus b: c}
+    \end{prooftree}
+    \\
+    \oplus \in \left\{
+    \verb|&|, \mytilde\verb|&|, \verb-|-, \mytilde\verb-|-, \verb|^|,
+    \mytilde\verb|^|, \verb|^|\mytilde,
+    \verb|!| \right\}
+     &
+    \begin{prooftree}
+      \hypo{c' = \ctx()}
+      \hypo{\vdash e: c'}
+      \infer2{\vdash \oplus e: c}
+    \end{prooftree}
+    \\
+    \oplus \in \left\{
+    \verb|>>|, \verb|<<|, \verb|**|,
+    \verb|>>>|, \verb|<<<| \right\}
+     &
+    \begin{prooftree}
+      \hypo{\vdash a: c}
+      \hypo{c' = \ctx()}
+      \hypo{\vdash b: c'}
+      \infer3{\vdash a \oplus b: c}
+    \end{prooftree}
+    \\
+    \oplus \in \left\{
+    \verb|=|, \verb|+=|, \verb|-=|,
+    \verb|*=|, \verb|/=|, \verb|%=|, % chktex 14
+    \verb|&=|, \verb-|=-, \verb|^=|  \right\}
+     &
+    \begin{prooftree}
+      \hypo{c' = \ctx()}
+      \hypo{\vdash a: c'}
+      \hypo{\vdash b: c'}
+      \infer3{\vdash a \oplus b: c}
+    \end{prooftree}
+    \\
+    \oplus \in \left\{
+    \verb|<<=|, \verb|>>=|, \verb|<<<=|, \verb|>>>=| \right\}
+     &
+    \begin{prooftree}
+      \hypo{c' = \ctx()}
+      \hypo{\vdash a: c'}
+      \hypo{c'' = \ctx()}
+      \hypo{\vdash b: c''}
+      \infer4{\vdash a \oplus b: c}
+    \end{prooftree}
   \end{array}
 \end{equation*}
 
-% % \begin{spreadlines}{2em}
-% %   \begin{gather*}
-% %     \begin{prooftree}
-% %       \hypo{\Gamma \mid \ast \vdash e: \epsilon,~\E} \hypo{\Gamma \mid
-% %         n \vdash a: \alpha,~\A} \hypo{\Gamma \mid n \vdash b:
-% %         \beta,~\B} \infer3{\Gamma \mid n \vdash e \texttt{?} a
-% %         \texttt{:} b: \alpha,~\A \sqcup \B / \alpha \sim \beta}
-% %     \end{prooftree}
-% %     \\
-% %     \begin{prooftree}
-% %       \hypo{\Gamma \mid \ast \vdash e_1: \epsilon_1,~\E_1}
-% %       \hypo{\dots} \hypo{\Gamma \mid \ast \vdash e_n:
-% %         \epsilon_n,~\E_n} \infer3{\Gamma \mid n \vdash \texttt{\{}e_1,
-% %         \texttt{\dots}, e_n \texttt{\}} : \upsilon,~\left\{\upsilon
-% %         \coloneq \left(\Delta_{\E_1}(\epsilon_1) + \cdots +
-% %         \Delta_{\E_n}(\epsilon_n)\right)\bowtie n\right\}}
-% %     \end{prooftree}
-% %     \\
-% %     \begin{prooftree}
-% %       \hypo{i \in \mathbb{N}} \hypo{\Gamma \mid \ast \vdash e_1:
-% %         \epsilon_1,~\E_1} \hypo{\dots} \hypo{\Gamma \mid \ast \vdash
-% %         e_k: \epsilon_k,~\E_k} \infer4{\Gamma \mid n \vdash
-% %         \texttt{\{}i\texttt{\{}e_1, \texttt{\dots}, e_k
-% %         \texttt{\}}\texttt{\}} : \upsilon,~\left\{\upsilon \coloneq
-% %         i\times\left(\Delta_{\E_1}(\epsilon_1) + \cdots +
-% %         \Delta_{\E_k}(\epsilon_k)\right) \bowtie n\right\}}
-% %     \end{prooftree}
-% %     \\
-% %     \begin{prooftree}
-% %       \hypo{\Gamma \mid \ast \vdash a: \alpha,~\A} \hypo{\Gamma \mid
-% %         \ast \vdash e_1: \epsilon_1,~\E_1} \hypo{\dots} \hypo{\Gamma
-% %         \mid \ast \vdash e_k: \epsilon_k,~\E_k} \hypo{\A \sqcup \E_1
-% %         \sqcup \cdots \sqcup \E_k / \alpha \sim \epsilon_1, \dots,
-% %         \alpha \sim \epsilon_k} \infer5{\Gamma \mid n \vdash
-% %         a~\texttt{inside}~\texttt{\{}e_1, \texttt{\dots}, e_k
-% %         \texttt{\}} : \upsilon,~\left\{\upsilon \coloneq 1 \bowtie
-% %         n\right\}}
-% %     \end{prooftree}
-% %   \end{gather*}
-% % \end{spreadlines}
+\begin{spreadlines}{2em}
+  \begin{gather*}
+    \begin{prooftree}
+      \hypo{c' = \ctx()}
+      \hypo{\vdash e: c'}
+      \hypo{\vdash a: c}
+      \hypo{\vdash b: c}
+      \infer4{\vdash e \texttt{?} a \texttt{:} b: c}
+    \end{prooftree}
+    \\
+    \begin{prooftree}
+      \hypo{c_1 = \ctx()}
+      \hypo{\vdash e_1: c_1}
+      \hypo{\dots}
+      \hypo{c_k = \ctx()}
+      \hypo{\vdash e_k: c_k}
+      \infer5{\vdash \texttt{\{}e_1, \texttt{\dots}, e_k \texttt{\}}: c}
+    \end{prooftree}
+    \\
+    \begin{prooftree}
+      \hypo{i \in \mathbb{N}}
+      \hypo{c_1 = \ctx()}
+      \hypo{\vdash e_1: c_1}
+      \hypo{\dots}
+      \hypo{c_k = \ctx()}
+      \hypo{\vdash e_k: c_k}
+      \infer6{\vdash \texttt{\{}i\texttt{\{}e_1, \texttt{\dots}, e_k \texttt{\}}\texttt{\}}: c}
+    \end{prooftree}
+    \\
+    \begin{prooftree}
+      \hypo{c' = \ctx()}
+      \hypo{\vdash a: c'}
+      \hypo{\vdash e_1: c'}
+      \hypo{\dots}
+      \hypo{\vdash e_k: c'}
+      \infer5{\vdash a~\texttt{inside}~\texttt{\{}e_1, \texttt{\dots}, e_k \texttt{\}}: c}
+    \end{prooftree}
+  \end{gather*}
+\end{spreadlines}
 
 \subsection*{Equivalence-Based Typing Rules}
 

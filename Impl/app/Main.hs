@@ -9,6 +9,7 @@ import Data.GraphViz.Commands
 import Data.GraphViz.Types (printDotGraph)
 import Data.GraphViz.Types.Generalised (DotGraph)
 import Data.Map.Strict qualified as Map
+import Data.Text.Lazy (Text)
 import Data.Text.Lazy.IO qualified as TIO
 import Frontend.Parser
 import Frontend.ParsingMonad (runParsing)
@@ -53,7 +54,7 @@ main = do
     readInputFile "-" = B.getContents
     readInputFile file = B.readFile file
 
-runDot :: Maybe FilePath -> DotGraph ExprId -> IO ()
+runDot :: Maybe FilePath -> DotGraph Text -> IO ()
 runDot Nothing g = runGraphvizCanvas Dot g Xlib
 runDot (Just "-") g = TIO.putStrLn $ printDotGraph g
 runDot (Just f) g = TIO.writeFile f $ printDotGraph g

@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Graph
-  ( ExprToGraph (tagText, nodeAttr, edgesAttr, transformGraph, buildGraph),
+  ( ExprToGraph (prefix, exprText, exprAttr, lValueText, lValueAttr, edgesAttr, transformGraph, buildGraph),
     exprToGraph,
     module Data.GraphViz.Types.Monadic,
     module Data.GraphViz.Attributes.Complete,
@@ -19,32 +19,36 @@ import Data.GraphViz.Types.Monadic
 import Data.Text.Lazy (Text)
 import Data.Text.Lazy qualified as T
 
-numChildren :: (Foldable t) => [(Text, Expr)] -> t Expr -> [(Text, Expr)]
+numChildren :: (Foldable t) => [(Text, a)] -> t a -> [(Text, a)]
 numChildren beg l = snd $ foldl addChild (0, beg) l
   where
-    addChild :: (Int, [(Text, Expr)]) -> Expr -> (Int, [(Text, Expr)])
+    addChild :: (Int, [(Text, a)]) -> a -> (Int, [(Text, a)])
     addChild (argId, acc) e = (argId + 1, ("arg" <> T.show argId, e) : acc)
 
-children :: ExprKind -> [(Text, Expr)]
+children :: ExprKind -> [(Text, Either LeftValue Expr)]
 children (Operand _) = mempty
 children (IntegerValue _) = mempty
-children (Arithmetic _ lhs rhs) = [("lhs", lhs), ("rhs", rhs)]
-children (PreUnOp _ arg) = [("arg", arg)]
-children (PostUnOp _ arg) = [("arg", arg)]
-children (Cast _ arg) = [("arg", arg)]
-children (Comparison _ lhs rhs) = [("lhs", lhs), ("rhs", rhs)]
-children (LogicNot arg) = [("arg", arg)]
-children (Logic _ lhs rhs) = [("lhs", lhs), ("rhs", rhs)]
-children (Reduction _ arg) = [("arg", arg)]
-children (Shift _ lhs rhs) = [("lhs", lhs), ("rhs", rhs)]
-children (Pow lhs rhs) = [("lhs", lhs), ("rhs", rhs)]
-children (BinOpAssign v _ expr) = [("var", v), ("expr", expr)]
-children (ShiftAssign v _ expr) = [("var", v), ("expr", expr)]
+children (Arithmetic _ lhs rhs) = [("lhs", Right lhs), ("rhs", Right rhs)]
+children (PreUnOp _ arg) = [("arg", Right arg)]
+children (PostUnOp _ arg) = [("arg", Right arg)]
+children (Cast _ arg) = [("arg", Right arg)]
+children (Comparison _ lhs rhs) = [("lhs", Right lhs), ("rhs", Right rhs)]
+children (LogicNot arg) = [("arg", Right arg)]
+children (Logic _ lhs rhs) = [("lhs", Right lhs), ("rhs", Right rhs)]
+children (Reduction _ arg) = [("arg", Right arg)]
+children (Shift _ lhs rhs) = [("lhs", Right lhs), ("rhs", Right rhs)]
+children (Pow lhs rhs) = [("lhs", Right lhs), ("rhs", Right rhs)]
+children (BinOpAssign v _ expr) = [("lvalue", Left v), ("expr", Right expr)]
+children (ShiftAssign v _ expr) = [("lvalue", Left v), ("expr", Right expr)]
 children (Conditional cond tBranch fBranch) =
-  [("cond", cond), ("true", tBranch), ("false", fBranch)]
-children (Concat l) = numChildren [] l
-children (ReplConcat _ l) = numChildren [] l
-children (Inside arg l) = numChildren [("item", arg)] l
+  [("cond", Right cond), ("true", Right tBranch), ("false", Right fBranch)]
+children (Concat l) = numChildren [] $ Right <$> l
+children (ReplConcat _ l) = numChildren [] $ Right <$> l
+children (Inside arg l) = numChildren [("item", Right arg)] $ Right <$> l
+
+lValueChildren :: LeftValue -> [(Text, Either LeftValue a)]
+lValueChildren (LeftAtom _ _) = mempty
+lValueChildren (LeftConcat {args}) = numChildren [] $ Left <$> args
 
 exprLabel :: ExprKind -> Text
 exprLabel (Operand e) = T.show e
@@ -67,52 +71,69 @@ exprLabel (Concat _) = "Concatenation"
 exprLabel (ReplConcat i _) = "Replication (x" <> T.show i <> ")"
 exprLabel (Inside _ _) = "Inside"
 
+lValueLabel :: LeftValue -> Text
+lValueLabel (LeftAtom op _) = T.show op
+lValueLabel (LeftConcat _ _ _) = "Concatenation"
+
 class (Monad m) => ExprToGraph m where
-  tagText :: Expr -> Text -> m Text
-  nodeAttr :: ExprId -> m Attributes
-  edgesAttr :: ExprId -> ExprId -> m Attributes
-  transformGraph :: ExprName -> Expr -> Dot ExprId -> m (Dot ExprId)
+  exprText :: Expr -> Text -> m Text
+  exprAttr :: AstId -> m Attributes
+  lValueText :: LeftValue -> Text -> m Text
+  lValueAttr :: AstId -> m Attributes
+  prefix :: m Text
 
-  addAstEdge :: ExprId -> (Text, Expr) -> m (Dot ExprId)
+  edgesAttr :: AstId -> AstId -> m Attributes
+  transformGraph :: ExprName -> Expr -> Dot Text -> m (Dot Text)
+
+  addAstEdge :: AstId -> (Text, Either LeftValue Expr) -> m (Dot Text)
   addAstEdge parentId (edgeName, childExpr) =
-    let childId = idFromExpr childExpr
+    let childId = either idFromLValue idFromExpr childExpr
      in do
+          p <- prefix
           edgeCustomAttr <- (textLabel edgeName :) <$> edgesAttr parentId childId
-          return $ edge parentId childId $ edgeCustomAttr
-
-  buildExprGraph :: Expr -> m (Dot ExprId)
+          return $ edge (p <> T.show parentId) (p <> T.show childId) $ edgeCustomAttr
+  buildExprGraph :: Either LeftValue Expr -> m (Dot Text)
   buildExprGraph expr =
-    let exprId = idFromExpr expr
-        eKind = exprKind expr
-        c = children eKind
+    let astId = either idFromLValue idFromExpr expr
+        c = either lValueChildren (children . exprKind) expr
      in do
-          nodeLabel <- tagText expr (exprLabel eKind)
-          nodeCustomAttr <- (textLabel nodeLabel :) <$> nodeAttr exprId
-          edgesDef <- mconcat <$> mapM (addAstEdge exprId) c
+          p <- prefix
+          nodeLabel <- either (\l -> lValueText l $ lValueLabel l) (\e -> exprText e . exprLabel $ exprKind e) expr
+          nodeCustomAttr <- either (const $ lValueAttr astId) (const $ exprAttr astId) expr
+          edgesDef <- mconcat <$> mapM (addAstEdge astId) c
           childDefs <- mconcat <$> mapM (buildExprGraph . snd) c
-          return $ node exprId nodeCustomAttr <> edgesDef <> childDefs
+          return $ node (p <> T.show astId) (textLabel nodeLabel : nodeCustomAttr) <> edgesDef <> childDefs
 
-  buildGraph :: ExprName -> Expr -> m (DotGraph ExprId)
+  buildGraph :: ExprName -> Expr -> m (DotGraph Text)
   buildGraph eName expr =
-    digraph' <$> (buildExprGraph expr >>= transformGraph eName expr)
+    digraph' <$> (buildExprGraph (Right expr) >>= transformGraph eName expr)
 
 instance ExprToGraph Identity where
-  tagText :: Expr -> Text -> Identity Text
-  tagText expr txt =
+  prefix :: Identity Text
+  prefix = return "node"
+
+  exprText :: Expr -> Text -> Identity Text
+  exprText expr txt =
     return $ case exprKind expr of
       Operand (Op {opSize}) -> txt <> "\nsize:" <> T.show opSize
       _ -> txt
 
-  nodeAttr :: ExprId -> Identity Attributes
-  nodeAttr _ = pure []
+  exprAttr :: AstId -> Identity Attributes
+  exprAttr _ = pure []
 
-  edgesAttr :: ExprId -> ExprId -> Identity Attributes
+  lValueText :: LeftValue -> Text -> Identity Text
+  lValueText lValue txt = return $ txt <> "\nsize: " <> T.show (leftSize lValue)
+
+  lValueAttr :: AstId -> Identity Attributes
+  lValueAttr _ = return [Style [SItem Dashed []]]
+
+  edgesAttr :: AstId -> AstId -> Identity Attributes
   edgesAttr _ _ = pure []
 
-  transformGraph :: ExprName -> Expr -> Dot ExprId -> Identity (Dot ExprId)
+  transformGraph :: ExprName -> Expr -> Dot Text -> Identity (Dot Text)
   transformGraph eName _ g =
-    let txt = T.show eName
-     in return $ graphAttrs [Comment $ "Graph for " <> txt, textLabel $ "Graph for " <> txt] <> g
+    let txt = "Ast of " <> T.show eName
+     in return $ graphAttrs [Comment txt, textLabel txt] <> g
 
-exprToGraph :: ExprName -> Expr -> DotGraph ExprId
+exprToGraph :: ExprName -> Expr -> DotGraph Text
 exprToGraph eName = runIdentity . buildGraph eName

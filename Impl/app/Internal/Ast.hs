@@ -1,6 +1,5 @@
 module Internal.Ast where
 
-import Data.GraphViz.Printing (DotCode, PrintDot (unqtDot))
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromJust)
@@ -18,7 +17,7 @@ newtype ExprName = EName Text
 newtype ExprTag = ETag Text
   deriving (Eq, Ord)
 
-newtype ExprId = EId Int
+newtype AstId = AId Int
   deriving (Eq, Ord)
 
 instance Show Size where
@@ -33,13 +32,9 @@ instance Show ExprTag where
   show :: ExprTag -> String
   show (ETag x) = T.unpack x
 
-instance Show ExprId where
-  show :: ExprId -> String
-  show (EId x) = show x
-
-instance PrintDot ExprId where
-  unqtDot :: ExprId -> DotCode
-  unqtDot (EId x) = unqtDot x
+instance Show AstId where
+  show :: AstId -> String
+  show (AId x) = show x
 
 data Operand = Op {opName :: Text, opSize :: Size}
   deriving (Eq, Ord)
@@ -99,7 +94,12 @@ data ReductionUnaryOp = RedAnd | RedNand | RedOr | RedNor | RedXor | RedNxor
 data Signedness = Signed | Unsigned
   deriving (Show)
 
-data Expr = E {getExpr :: ExprKind, getTag :: ExprId}
+data LeftValue
+  = LeftAtom Operand AstId
+  | LeftConcat {args :: [LeftValue], concatSize :: Size, concatTag :: AstId}
+  deriving (Show)
+
+data Expr = E {getExpr :: ExprKind, astTag :: AstId}
   deriving (Show)
 
 data ExprKind
@@ -115,8 +115,8 @@ data ExprKind
   | Reduction ReductionUnaryOp Expr
   | Shift ShiftBinaryOp Expr Expr
   | Pow Expr Expr
-  | BinOpAssign Expr AssignBinaryOp Expr
-  | ShiftAssign Expr ShiftBinaryOp Expr
+  | BinOpAssign LeftValue AssignBinaryOp Expr
+  | ShiftAssign LeftValue ShiftBinaryOp Expr
   | Conditional Expr Expr Expr
   | Concat [Expr]
   | ReplConcat Int [Expr]
@@ -125,9 +125,9 @@ data ExprKind
 
 data Ast = Ast
   { exprs :: Map ExprName Expr,
-    tagToId :: Map ExprTag ExprId,
-    idToExpr :: Map ExprId Expr,
-    idToTopLevel :: Set ExprId
+    tagToId :: Map ExprTag AstId,
+    idToExpr :: Map AstId Expr,
+    idToTopLevel :: Set AstId
   }
   deriving (Show)
 
@@ -135,13 +135,9 @@ data Ast = Ast
 astExprs :: Ast -> Map ExprName Expr
 astExprs = exprs
 
-{-# INLINE exprFromId #-}
-exprFromId :: Ast -> ExprId -> Expr
-exprFromId = (Map.!) . idToExpr
-
 {-# INLINE idFromExpr #-}
-idFromExpr :: Expr -> ExprId
-idFromExpr = getTag
+idFromExpr :: Expr -> AstId
+idFromExpr = astTag
 
 {-# INLINE exprKind #-}
 exprKind :: Expr -> ExprKind
@@ -149,8 +145,18 @@ exprKind = getExpr
 
 {-# INLINE topLevelExpr #-}
 topLevelExpr :: Ast -> Expr -> Expr
-topLevelExpr ast e = exprFromId ast . fromJust $ Set.lookupGE (idFromExpr e) (idToTopLevel ast)
+topLevelExpr ast e = (Map.!) (idToExpr ast) . fromJust $ Set.lookupGE (idFromExpr e) (idToTopLevel ast)
 
 {-# INLINE exprFromTag #-}
 exprFromTag :: Ast -> ExprTag -> Expr
-exprFromTag ast = exprFromId ast . (Map.!) (tagToId ast)
+exprFromTag ast = (Map.!) (idToExpr ast) . (Map.!) (tagToId ast)
+
+{-# INLINE leftSize #-}
+leftSize :: LeftValue -> Size
+leftSize (LeftAtom x _) = opSize x
+leftSize (LeftConcat {concatSize}) = concatSize
+
+{-# INLINE idFromLValue #-}
+idFromLValue :: LeftValue -> AstId
+idFromLValue (LeftAtom _ i) = i
+idFromLValue (LeftConcat {concatTag}) = concatTag
