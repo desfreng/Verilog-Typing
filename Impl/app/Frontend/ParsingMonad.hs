@@ -5,62 +5,38 @@ module Frontend.ParsingMonad where
 import Codec.Binary.UTF8.String
 import Control.Monad
 import Control.Monad.Except
-import Control.Monad.RWS
-import Data.ByteString.Lazy (ByteString)
-import Data.Functor
+import Control.Monad.Reader
+import Control.Monad.State.Strict
 import Data.List qualified as List
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe
-import Data.Set (Set)
-import Data.Set qualified as Set
 import Data.Text.Lazy (Text)
 import Data.Text.Lazy qualified as T
-import Data.Text.Lazy.Encoding (decodeUtf8)
 import Data.Word (Word8)
+import Expr
 import Frontend.Tokens
-import Internal.Ast
+import Model
 import Numeric
-import System.Exit (ExitCode (ExitFailure), exitWith)
 
 -- Parsing Monad
 
-data ParsingInfo = PInfo
-  { defaultIntSize :: Int
+type ParsingRead = Int
+
+data ParsingState = PS
+  { alexState :: AlexInput,
+    declsTags :: Map ExprTag ExprId
   }
 
-data ParsingState = PState
-  { exprNextId :: Int,
-    declIdents :: Set Text,
-    alexInput :: AlexInput,
-    declOps :: Map Text Size
-  }
-
-newtype Parsing a = Parsing (ExceptT String (RWS ParsingInfo ParsingWriter ParsingState) a)
+newtype Parsing a = Parsing (ExceptT String (ReaderT ParsingRead (StateT ParsingState Model)) a)
   deriving (Functor, Applicative, Monad)
 
 instance MonadFail Parsing where
   fail :: String -> Parsing a
   fail = Parsing . throwError
 
--- ParsingWriter Stuff
-
-newtype ParsingWriter = PWriter (Ast)
-
-instance Semigroup ParsingWriter where
-  (<>) :: ParsingWriter -> ParsingWriter -> ParsingWriter
-  PWriter (a) <> PWriter (b) =
-    PWriter $
-      Ast
-        { exprs = exprs a <> exprs b,
-          tagToId = tagToId a <> tagToId b,
-          idToExpr = idToExpr a <> idToExpr b,
-          idToTopLevel = idToTopLevel a <> idToTopLevel b
-        }
-
-instance Monoid ParsingWriter where
-  mempty :: ParsingWriter
-  mempty = PWriter $ Ast mempty mempty mempty mempty
+toParsing :: Model a -> Parsing a
+toParsing = Parsing . lift . lift . lift
 
 -- Alex Stuff
 
@@ -88,10 +64,10 @@ alexInputPrevChar :: AlexInput -> Char
 alexInputPrevChar = inpLastChar
 
 getAlexInput :: Parsing AlexInput
-getAlexInput = Parsing $ gets alexInput
+getAlexInput = Parsing $ gets alexState
 
 setAlexInput :: AlexInput -> Parsing ()
-setAlexInput newInput = Parsing . modify $ \s -> s {alexInput = newInput}
+setAlexInput aState = Parsing . modify $ \s -> s {alexState = aState}
 
 lexingFailure :: AlexInput -> Parsing a
 lexingFailure AlexInput {inpLastChar, inpStream} =
@@ -116,11 +92,11 @@ readParsing p s =
 
 parseVerilogInt :: Text -> Parsing Token
 parseVerilogInt input = do
-  defIntSize <- Parsing $ asks defaultIntSize
+  bSize <- Parsing $ ask
   case T.breakOn "'" input of
-    (value, "") -> Number . VInteger (Size defIntSize) <$> readParsing readDec value
+    (value, "") -> Number . VInteger (Size bSize) <$> readParsing readDec value
     (bitWidthText, rest) ->
-      let bitWidth = Size $ readMaybe defIntSize readDec bitWidthText
+      let bitWidth = Size $ readMaybe bSize readDec bitWidthText
           baseAndValue = T.drop 1 rest
           vInt = Number . VInteger bitWidth
        in vInt <$> case T.uncons baseAndValue of
@@ -146,84 +122,58 @@ token = const . return
 parseError :: Token -> Parsing a
 parseError tok = fail $ "ParseError: Unexpected token '" <> show tok <> "'."
 
-checkIdentUsed :: Text -> Parsing ()
-checkIdentUsed name = do
-  declIdent <- Parsing $ gets declIdents
-  if Set.member name declIdent
-    then
-      fail $ "The name " <> T.unpack name <> " is already used."
-    else Parsing . modify $ \s -> s {declIdents = Set.insert name (declIdents s)}
-
 declareOperand :: Text -> VerilogInteger -> Parsing ()
-declareOperand name (VInteger _ val) = checkIdentUsed name >> genOperand
-  where
-    genOperand :: Parsing ()
-    genOperand = Parsing . modify $ \s -> s {declOps = Map.insert name (toEnum $ fromEnum val) (declOps s)}
+declareOperand name size =
+  let op = Op name . Size . fromEnum $ value size
+   in do
+        res <- toParsing $ addOperand op
+        case res of
+          Error -> fail $ "This operand is already declared: '" <> show name <> "'."
+          Success -> return ()
 
 declareExpr :: Text -> Expr -> Parsing ()
-declareExpr name expr = checkIdentUsed name >> genExpr
-  where
-    genExpr :: Parsing ()
-    genExpr =
-      Parsing . tell $
-        PWriter $
-          Ast
-            { exprs = Map.singleton (EName name) expr,
-              idToExpr = mempty,
-              idToTopLevel = Set.singleton (idFromExpr expr),
-              tagToId = mempty
-            }
+declareExpr eName e = do
+  tags <- Parsing $ gets declsTags
+  res <- toParsing $ addNamedExpr eName e tags
+  case res of
+    Error -> fail $ "This expression is already declared: '" <> show eName <> "'."
+    Success -> Parsing . modify $ \s -> s {declsTags = mempty}
 
 declareTag :: Text -> Expr -> Parsing Expr
-declareTag name expr = checkIdentUsed name >> genTag $> expr
+declareTag name expr = do
+  tagId <- toParsing (isTagUsed name)
+  case tagId of
+    Nothing -> tagAlreadyDeclared
+    Just t -> do
+      inDeclTags <- Parsing . gets $ Map.member t . declsTags
+      if inDeclTags
+        then tagAlreadyDeclared
+        else do
+          () <- Parsing . modify $ \s -> s {declsTags = Map.insert t (exprId expr) $ declsTags s}
+          return expr
   where
-    genTag :: Parsing ()
-    genTag =
-      Parsing . tell $
-        PWriter $
-          Ast
-            { exprs = mempty,
-              idToExpr = mempty,
-              idToTopLevel = mempty,
-              tagToId = Map.singleton (ETag name) (idFromExpr expr)
-            }
+    tagAlreadyDeclared :: Parsing a
+    tagAlreadyDeclared = fail $ "The tag '" <> show name <> "' is already declared."
 
 getOperand :: Text -> Parsing Operand
 getOperand t =
   do
-    declIdent <- Parsing $ gets declOps
-    case Map.lookup t declIdent of
+    op <- toParsing $ findOperand t
+    case op of
       Nothing -> fail $ "The operand '" <> T.unpack t <> "' is not declared."
-      Just size -> return $ Op t size
-
-genAstId :: Parsing AstId
-genAstId = Parsing . state $ \s -> (AId $ exprNextId s, incrState s)
-  where
-    incrState pState@PState {exprNextId = eId} = pState {exprNextId = eId + 1}
+      Just o -> return o
 
 inExpr :: ExprKind -> Parsing Expr
-inExpr eKind = do
-  exprId <- genAstId
-  let expr = E eKind exprId
-   in (Parsing . tell $ addExprId exprId expr) $> expr
-  where
-    addExprId eId eExpr =
-      PWriter $
-        Ast
-          { exprs = mempty,
-            idToExpr = Map.singleton eId eExpr,
-            idToTopLevel = mempty,
-            tagToId = mempty
-          }
+inExpr = toParsing . buildExpr
 
 buildLeftValue :: Expr -> Parsing LeftValue
-buildLeftValue (E e _) = go e
+buildLeftValue e = go $ exprKind e
   where
-    go (Operand op) = genAstId >>= return . LeftAtom op
+    go (Operand op) = toParsing . buildLValue $ LeftAtom op
     go (Concat l) = do
       lLeft <- mapM buildLeftValue l
       let finalSize = foldl (+) 0 $ leftSize <$> lLeft
-       in genAstId >>= return . LeftConcat lLeft finalSize
+       in toParsing . buildLValue $ LeftConcat lLeft finalSize
     go _ = fail "This is not a left value."
 
 parseOperand :: Text -> Parsing Expr
@@ -239,11 +189,19 @@ parseShiftAssign t op e = do
   lhs <- buildLeftValue t
   inExpr $ ShiftAssign lhs op e
 
-runParsing :: Int -> Parsing () -> ByteString -> IO Ast
-runParsing defaultIntSize (Parsing m) content =
-  let initialPInfo = PInfo {defaultIntSize}
-      alexInput = AlexInput {inpLastChar = '\n', inpNextBytes = [], inpStream = decodeUtf8 content}
-      initialPState = PState {exprNextId = 0, declIdents = mempty, alexInput, declOps = mempty}
-   in case runRWS (runExceptT m) initialPInfo initialPState of
-        (Right (), _, (PWriter ast)) -> return $ ast
-        (Left errMsg, _, _) -> putStrLn errMsg >> exitWith (ExitFailure 1)
+runParser :: Parsing a -> Text -> (a -> ParsingState -> Model (Maybe String)) -> Model (Maybe String)
+runParser (Parsing m) content f =
+  let alexInput = AlexInput {inpLastChar = '\n', inpNextBytes = [], inpStream = content}
+      initS = PS {alexState = alexInput, declsTags = mempty}
+      defaultIntSize = 32
+   in do
+        (res, s) <- runStateT (runReaderT (runExceptT m) defaultIntSize) initS
+        case res of
+          Left errorStr -> return $ Just errorStr
+          Right x -> f x s
+
+runExprParser :: Parsing Expr -> Text -> Model (Maybe String)
+runExprParser m content = runParser m content $ \e s -> addExpr e (declsTags s) >> return Nothing
+
+runFileParser :: Parsing () -> Text -> Model (Maybe String)
+runFileParser m content = runParser m content $ \() _ -> return Nothing

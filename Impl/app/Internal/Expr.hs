@@ -1,40 +1,21 @@
-module Internal.Ast where
+module Internal.Expr where
 
-import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as Map
-import Data.Maybe (fromJust)
-import Data.Set (Set)
-import Data.Set qualified as Set
 import Data.Text.Lazy (Text)
 import Data.Text.Lazy qualified as T
 
 newtype Size = Size Int
   deriving (Eq, Ord, Enum, Num)
 
-newtype ExprName = EName Text
-  deriving (Eq, Ord)
-
-newtype ExprTag = ETag Text
-  deriving (Eq, Ord)
-
-newtype AstId = AId Int
+newtype ExprId = EId Int
   deriving (Eq, Ord)
 
 instance Show Size where
   show :: Size -> String
   show (Size s) = show s
 
-instance Show ExprName where
-  show :: ExprName -> String
-  show (EName x) = T.unpack x
-
-instance Show ExprTag where
-  show :: ExprTag -> String
-  show (ETag x) = T.unpack x
-
-instance Show AstId where
-  show :: AstId -> String
-  show (AId x) = show x
+instance Show ExprId where
+  show :: ExprId -> String
+  show (EId x) = show x
 
 data Operand = Op {opName :: Text, opSize :: Size}
   deriving (Eq, Ord)
@@ -95,11 +76,11 @@ data Signedness = Signed | Unsigned
   deriving (Show)
 
 data LeftValue
-  = LeftAtom Operand AstId
-  | LeftConcat {args :: [LeftValue], concatSize :: Size, concatTag :: AstId}
+  = LeftAtom Operand ExprId
+  | LeftConcat {args :: [LeftValue], concatSize :: Size, concatTag :: ExprId}
   deriving (Show)
 
-data Expr = E {getExpr :: ExprKind, astTag :: AstId}
+data Expr = E {e :: ExprKind, exprTag :: ExprId}
   deriving (Show)
 
 data ExprKind
@@ -123,40 +104,35 @@ data ExprKind
   | Inside Expr [Expr]
   deriving (Show)
 
-data Ast = Ast
-  { exprs :: Map ExprName Expr,
-    tagToId :: Map ExprTag AstId,
-    idToExpr :: Map AstId Expr,
-    idToTopLevel :: Set AstId
-  }
-  deriving (Show)
-
-{-# INLINE astExprs #-}
-astExprs :: Ast -> Map ExprName Expr
-astExprs = exprs
-
-{-# INLINE idFromExpr #-}
-idFromExpr :: Expr -> AstId
-idFromExpr = astTag
-
 {-# INLINE exprKind #-}
 exprKind :: Expr -> ExprKind
-exprKind = getExpr
-
-{-# INLINE topLevelExpr #-}
-topLevelExpr :: Ast -> Expr -> Expr
-topLevelExpr ast e = (Map.!) (idToExpr ast) . fromJust $ Set.lookupGE (idFromExpr e) (idToTopLevel ast)
-
-{-# INLINE exprFromTag #-}
-exprFromTag :: Ast -> ExprTag -> Expr
-exprFromTag ast = (Map.!) (idToExpr ast) . (Map.!) (tagToId ast)
+exprKind = e
 
 {-# INLINE leftSize #-}
 leftSize :: LeftValue -> Size
 leftSize (LeftAtom x _) = opSize x
 leftSize (LeftConcat {concatSize}) = concatSize
 
-{-# INLINE idFromLValue #-}
-idFromLValue :: LeftValue -> AstId
-idFromLValue (LeftAtom _ i) = i
-idFromLValue (LeftConcat {concatTag}) = concatTag
+class ToExprId a where
+  exprId :: a -> ExprId
+
+instance ToExprId ExprId where
+  {-# INLINE exprId #-}
+  exprId :: ExprId -> ExprId
+  exprId = id
+
+instance ToExprId Expr where
+  {-# INLINE exprId #-}
+  exprId :: Expr -> ExprId
+  exprId = exprTag
+
+instance ToExprId LeftValue where
+  {-# INLINE exprId #-}
+  exprId :: LeftValue -> ExprId
+  exprId (LeftAtom _ i) = i
+  exprId (LeftConcat {concatTag}) = concatTag
+
+instance (ToExprId a, ToExprId b) => ToExprId (Either a b) where
+  {-# INLINE exprId #-}
+  exprId :: (ToExprId a, ToExprId b) => Either a b -> ExprId
+  exprId = either exprId exprId

@@ -1,8 +1,8 @@
 {
 
-module Frontend.Parser (parser) where
+module Frontend.Parser (parseExpr, parseFile) where
 
-import Ast
+import Expr
 import Data.ByteString.Lazy (ByteString)
 import Data.Foldable
 import Data.Text.Lazy (Text)
@@ -15,79 +15,80 @@ import Frontend.Tokens qualified as T
 
 %expect 0 -- shift/reduce conflicts
 
-%name parser file
+%name parseExpr expr
+%name parseFile file
 %tokentype { T.Token }
 %error { parseError }
 %monad { Parsing } { >>= } { return }
-%lexer { L.lexer } { T.Eof }
+%lexer { L.lexer } { T.Eoi }
 
-%token ident       { T.Ident $$ }
-%token int         { T.Number $$ }
-%token 'inside'    { T.KeyWord T.Inside }
-%token 'signed'    { T.KeyWord T.Signed }
-%token 'unsigned'  { T.KeyWord T.Unsigned }
-%token 'var'       { T.KeyWord T.Var }
-%token 'expr'      { T.KeyWord T.Expr }
+%token ident            { T.Ident $$ }
+%token int              { T.Number $$ }
+%token 'inside'         { T.KeyWord T.Inside }
+%token 'signed'         { T.KeyWord T.Signed }
+%token 'unsigned'       { T.KeyWord T.Unsigned }
+%token 'var'            { T.KeyWord T.Var }
+%token 'expr'           { T.KeyWord T.Expr }
 
-%token '<<<='          { T.TripleLtEqual }
-%token '>>>='          { T.TripleGtEqual }
+%token '<<<='           { T.TripleLtEqual }
+%token '>>>='           { T.TripleGtEqual }
 
-%token '==='           { T.TripleEqual }
-%token '!=='           { T.ExclDoubleEqual }
-%token '==?'           { T.DoubleEqualQuest }
-%token '!=?'           { T.ExclEqualQuest }
-%token '<<<'           { T.TripleLt }
-%token '>>>'           { T.TripleGt }
-%token '<<='           { T.DoubleLtEqual }
-%token '>>='           { T.DoubleGtEqual }
-%token '<->'           { T.EquivArrow }
+%token '==='            { T.TripleEqual }
+%token '!=='            { T.ExclDoubleEqual }
+%token '==?'            { T.DoubleEqualQuest }
+%token '!=?'            { T.ExclEqualQuest }
+%token '<<<'            { T.TripleLt }
+%token '>>>'            { T.TripleGt }
+%token '<<='            { T.DoubleLtEqual }
+%token '>>='            { T.DoubleGtEqual }
+%token '<->'            { T.EquivArrow }
 
-%token '++'            { T.DoublePlus }
-%token '--'            { T.DoubleMinus }
-%token '=='            { T.DoubleEqual }
-%token '!='            { T.ExclEqual }
-%token '<='            { T.LtEqual }
-%token '>='            { T.GtEqual }
-%token '&&'            { T.DoubleAmpersand }
-%token '||'            { T.DoublePipe }
-%token '->'            { T.RightArrow }
-%token '~&'            { T.TildeAmpersand }
-%token '~|'            { T.TildePipe }
-%token '~^'            { T.TildeCaret }
-%token '^~'            { T.CaretTilde }
-%token '<<'            { T.DoubleLt }
-%token '>>'            { T.DoubleGt }
-%token '**'            { T.DoubleAsterisk }
-%token '+='            { T.PlusEqual }
-%token '-='            { T.MinusEqual }
-%token '*='            { T.AstEqual }
-%token '/='            { T.SlashEqual }
-%token '%='            { T.PercentEqual }
-%token '&='            { T.AmpersandEqual }
-%token '|='            { T.PipeEqual }
-%token '^='            { T.CaretEqual }
-%token '::'            { T.DoubleColon }
+%token '++'             { T.DoublePlus }
+%token '--'             { T.DoubleMinus }
+%token '=='             { T.DoubleEqual }
+%token '!='             { T.ExclEqual }
+%token '<='             { T.LtEqual }
+%token '>='             { T.GtEqual }
+%token '&&'             { T.DoubleAmpersand }
+%token '||'             { T.DoublePipe }
+%token '->'             { T.RightArrow }
+%token '~&'             { T.TildeAmpersand }
+%token '~|'             { T.TildePipe }
+%token '~^'             { T.TildeCaret }
+%token '^~'             { T.CaretTilde }
+%token '<<'             { T.DoubleLt }
+%token '>>'             { T.DoubleGt }
+%token '**'             { T.DoubleAsterisk }
+%token '+='             { T.PlusEqual }
+%token '-='             { T.MinusEqual }
+%token '*='             { T.AstEqual }
+%token '/='             { T.SlashEqual }
+%token '%='             { T.PercentEqual }
+%token '&='             { T.AmpersandEqual }
+%token '|='             { T.PipeEqual }
+%token '^='             { T.CaretEqual }
+%token '::'             { T.DoubleColon }
 
-%token '('             { T.OpenParen }
-%token ')'             { T.CloseParen }
-%token '+'             { T.Plus }
-%token '-'             { T.Minus }
-%token '*'             { T.Asterisk }
-%token '/'             { T.Slash }
-%token '%'             { T.Percent }
-%token '&'             { T.Ampersand }
-%token '|'             { T.Pipe }
-%token '^'             { T.Caret }
-%token '~'             { T.Tilde }
-%token '<'             { T.Lt }
-%token '>'             { T.Gt }
-%token '!'             { T.Excl }
-%token '='             { T.Equal }
-%token '?'             { T.Quest }
-%token ':'             { T.Colon }
-%token '{'             { T.OpenBrace }
-%token '}'             { T.CloseBrace }
-%token ','             { T.Comma }
+%token '('              { T.OpenParen }
+%token ')'              { T.CloseParen }
+%token '+'              { T.Plus }
+%token '-'              { T.Minus }
+%token '*'              { T.Asterisk }
+%token '/'              { T.Slash }
+%token '%'              { T.Percent }
+%token '&'              { T.Ampersand }
+%token '|'              { T.Pipe }
+%token '^'              { T.Caret }
+%token '~'              { T.Tilde }
+%token '<'              { T.Lt }
+%token '>'              { T.Gt }
+%token '!'              { T.Excl }
+%token '='              { T.Equal }
+%token '?'              { T.Quest }
+%token ':'              { T.Colon }
+%token '{'              { T.OpenBrace }
+%token '}'              { T.CloseBrace }
+%token ','              { T.Comma }
 
 
 %left '=' '+=' '-=' '*=' '/=' '%=' '&=' '|=' '^=' '<<=' '<<<=' '>>=' '>>>='
@@ -207,7 +208,6 @@ exprRange
 exprList
   : expr                              { singleton $1 }
   | exprList ',' expr                 { $1 :> $3 }
-
 
 {
 

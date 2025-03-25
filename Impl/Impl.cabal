@@ -18,12 +18,14 @@ executable Impl
 
     -- Modules included in this executable, other than Main.
     other-modules:
-        Internal.Ast,
         Frontend.Tokens,
         Frontend.ParsingMonad,
         Frontend.Reversed,
-        Ast,
-        Context,
+        Model,
+        Internal.Expr,
+        Expr,
+        Context.Context,
+        Context.Graph,
         Graph
 
     -- LANGUAGE extensions used by modules in this package.
@@ -52,7 +54,11 @@ executable Impl
         pretty-show >= 1.10 && < 1.11,
         pretty-simple >= 4.1.3 && < 4.2,
         union-find >= 0.1 && < 0.2,
-        utf8-string >= 1.0.2 && < 1.1
+        utf8-string >= 1.0.2 && < 1.1,
+        happstack-server,
+        blaze-html,
+        blaze-markup,
+        filepath
 
     hs-source-dirs:   app
     default-language: GHC2024

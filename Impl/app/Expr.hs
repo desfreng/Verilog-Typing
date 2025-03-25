@@ -1,7 +1,5 @@
-module Ast
-  ( ExprName (),
-    ExprTag (),
-    AstId (),
+module Expr
+  ( ExprId (),
     Size (..),
     Operand (..),
     VerilogInteger (..),
@@ -17,15 +15,10 @@ module Ast
     LeftValue (..),
     Expr (),
     ExprKind (..),
-    Ast (),
-    astExprs,
-    idFromExpr,
     exprKind,
-    topLevelExpr,
-    exprFromTag,
     leftSize,
-    idFromLValue,
+    ToExprId (..),
   )
 where
 
-import Internal.Ast
+import Internal.Expr

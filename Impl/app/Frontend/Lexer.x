@@ -98,7 +98,7 @@ lexer :: (Token -> Parsing a) -> Parsing a
 lexer cont = do
   alexIn <- getAlexInput
   case alexScan alexIn 0 of
-    AlexEOF -> cont Eof
+    AlexEOF -> cont Eoi
     AlexError lastInput -> lexingFailure lastInput
     AlexSkip newInput _ -> setAlexInput newInput >> lexer cont
     AlexToken newInput len act ->

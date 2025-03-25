@@ -2,22 +2,30 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Graph
-  ( ExprToGraph (prefix, exprText, exprAttr, lValueText, lValueAttr, edgesAttr, transformGraph, buildGraph),
+  ( ExprToGraph
+      ( exprText,
+        exprAttr,
+        lValueText,
+        lValueAttr,
+        edgesAttr,
+        transformGraph,
+        buildGraph,
+        prefix
+      ),
     exprToGraph,
-    module Data.GraphViz.Types.Monadic,
-    module Data.GraphViz.Attributes.Complete,
-    DotGraph,
+    colorNode,
   )
 where
 
-import Ast
 import Control.Monad.Identity (Identity (runIdentity))
-import Data.GraphViz.Attributes
+import Data.GraphViz.Attributes hiding (bgColor)
 import Data.GraphViz.Attributes.Complete
-import Data.GraphViz.Types.Generalised (DotGraph)
 import Data.GraphViz.Types.Monadic
 import Data.Text.Lazy (Text)
 import Data.Text.Lazy qualified as T
+import Expr
+import Graphics.Color.Model qualified as CM
+import Model
 
 numChildren :: (Foldable t) => [(Text, a)] -> t a -> [(Text, a)]
 numChildren beg l = snd $ foldl addChild (0, beg) l
@@ -75,42 +83,60 @@ lValueLabel :: LeftValue -> Text
 lValueLabel (LeftAtom op _) = T.show op
 lValueLabel (LeftConcat _ _ _) = "Concatenation"
 
-class (Monad m) => ExprToGraph m where
-  exprText :: Expr -> Text -> m Text
-  exprAttr :: AstId -> m Attributes
-  lValueText :: LeftValue -> Text -> m Text
-  lValueAttr :: AstId -> m Attributes
-  prefix :: m Text
+bgColorHSV :: (RealFrac a) => a -> a -> a -> Color
+bgColorHSV h s v =
+  let (CM.ColorRGB r g b) = CM.hsv2rgb $ CM.ColorHSV h s v
+   in bgColorRGB r g b
 
-  edgesAttr :: AstId -> AstId -> m Attributes
+bgColorRGB :: (RealFrac a) => a -> a -> a -> Color
+bgColorRGB r g b =
+  let l = r * 0.299 + g * 0.587 + b * 0.114
+   in if l > 0.57 then toColor Black else toColor White
+
+bgColor :: Color -> Color
+bgColor (RGB r g b) = bgColorRGB (fromIntegral r / 255 :: Double) (fromIntegral g / 255) (fromIntegral b / 255)
+bgColor (HSV h s v) = bgColorHSV h s v
+bgColor _ = error "Unable to extract color components"
+
+colorNode :: Color -> Attributes
+colorNode bgCol = [FillColor [toWC bgCol], FontColor $ bgColor bgCol, Style [SItem Filled []]]
+
+class (Monad m) => ExprToGraph m where
+  prefix :: ExprId -> m Text
+  exprText :: Expr -> Text -> m Text
+  exprAttr :: ExprId -> m Attributes
+  lValueText :: LeftValue -> Text -> m Text
+  lValueAttr :: ExprId -> m Attributes
+
+  edgesAttr :: ExprId -> ExprId -> m Attributes
   transformGraph :: ExprName -> Expr -> Dot Text -> m (Dot Text)
 
-  addAstEdge :: AstId -> (Text, Either LeftValue Expr) -> m (Dot Text)
+  addAstEdge :: ExprId -> (Text, Either LeftValue Expr) -> m (Dot Text)
   addAstEdge parentId (edgeName, childExpr) =
-    let childId = either idFromLValue idFromExpr childExpr
+    let childId = exprId childExpr
      in do
-          p <- prefix
+          pId <- prefix parentId
+          cId <- prefix childId
           edgeCustomAttr <- (textLabel edgeName :) <$> edgesAttr parentId childId
-          return $ edge (p <> T.show parentId) (p <> T.show childId) $ edgeCustomAttr
+          return $ edge pId cId $ edgeCustomAttr
   buildExprGraph :: Either LeftValue Expr -> m (Dot Text)
   buildExprGraph expr =
-    let astId = either idFromLValue idFromExpr expr
+    let eId = exprId expr
         c = either lValueChildren (children . exprKind) expr
      in do
-          p <- prefix
+          nodeId <- prefix eId
           nodeLabel <- either (\l -> lValueText l $ lValueLabel l) (\e -> exprText e . exprLabel $ exprKind e) expr
-          nodeCustomAttr <- either (const $ lValueAttr astId) (const $ exprAttr astId) expr
-          edgesDef <- mconcat <$> mapM (addAstEdge astId) c
+          nodeCustomAttr <- either (const $ lValueAttr eId) (const $ exprAttr eId) expr
+          edgesDef <- mconcat <$> mapM (addAstEdge eId) c
           childDefs <- mconcat <$> mapM (buildExprGraph . snd) c
-          return $ node (p <> T.show astId) (textLabel nodeLabel : nodeCustomAttr) <> edgesDef <> childDefs
+          return $ node nodeId (textLabel nodeLabel : nodeCustomAttr) <> edgesDef <> childDefs
 
-  buildGraph :: ExprName -> Expr -> m (DotGraph Text)
-  buildGraph eName expr =
-    digraph' <$> (buildExprGraph (Right expr) >>= transformGraph eName expr)
+  buildGraph :: ExprName -> Expr -> m (Dot Text)
+  buildGraph eName expr = buildExprGraph (Right expr) >>= transformGraph eName expr
 
 instance ExprToGraph Identity where
-  prefix :: Identity Text
-  prefix = return "node"
+  prefix :: ExprId -> Identity Text
+  prefix = return . T.show
 
   exprText :: Expr -> Text -> Identity Text
   exprText expr txt =
@@ -118,16 +144,16 @@ instance ExprToGraph Identity where
       Operand (Op {opSize}) -> txt <> "\nsize:" <> T.show opSize
       _ -> txt
 
-  exprAttr :: AstId -> Identity Attributes
+  exprAttr :: ExprId -> Identity Attributes
   exprAttr _ = pure []
 
   lValueText :: LeftValue -> Text -> Identity Text
   lValueText lValue txt = return $ txt <> "\nsize: " <> T.show (leftSize lValue)
 
-  lValueAttr :: AstId -> Identity Attributes
+  lValueAttr :: ExprId -> Identity Attributes
   lValueAttr _ = return [Style [SItem Dashed []]]
 
-  edgesAttr :: AstId -> AstId -> Identity Attributes
+  edgesAttr :: ExprId -> ExprId -> Identity Attributes
   edgesAttr _ _ = pure []
 
   transformGraph :: ExprName -> Expr -> Dot Text -> Identity (Dot Text)
@@ -135,5 +161,5 @@ instance ExprToGraph Identity where
     let txt = "Ast of " <> T.show eName
      in return $ graphAttrs [Comment txt, textLabel txt] <> g
 
-exprToGraph :: ExprName -> Expr -> DotGraph Text
+exprToGraph :: ExprName -> Expr -> Dot Text
 exprToGraph eName = runIdentity . buildGraph eName
