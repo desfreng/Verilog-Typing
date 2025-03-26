@@ -1,11 +1,12 @@
 \documentclass{article}
-\usepackage[a4paper, margin=0.5cm]{geometry}
+\usepackage[a4paper, margin=1cm]{geometry}
 \usepackage[english]{babel}
 \usepackage[mono=false]{libertine}
 
 \usepackage{hyperref}
 \usepackage{csquotes}
 \usepackage{ascii}
+\usepackage{enumitem}
 
 \usepackage{amssymb}
 \usepackage{amsmath}
@@ -15,8 +16,14 @@
 \usepackage{ebproof}
 
 
-\DeclareMathOperator{\D}{D}
-\DeclareMathOperator{\A}{A}
+\DeclareMathOperator{\dom}{dom}
+
+\DeclareMathOperator{\Size}{Size}
+\DeclareMathOperator{\Add}{Add}
+\DeclareMathOperator{\Id}{Id}
+\DeclareMathOperator{\Mul}{Mul}
+
+\allowdisplaybreaks{}
 
 \newcommand{\mytilde}{\raisebox{-.7ex}{\asciitilde{}}}
 
@@ -26,20 +33,15 @@
       \texttt{+}, \texttt{-}, \texttt{*}, \texttt{/}, \texttt{\%}, \texttt{\&},
       \texttt{|}, \texttt{\^{}}, \texttt{\^{}}\mytilde, \mytilde\texttt{\^{}}
       \right\}}}
-\newcommand{\preUnOp}{\ensuremath{\left\{
+\newcommand{\unOp}{\ensuremath{\left\{
       \texttt{+}, \texttt{-}, \texttt{++}, \texttt{--}, \mytilde
     \right\}}}
-\newcommand{\postUnOp}{\ensuremath{\left\{\texttt{++}, \texttt{--}\right\}}}
-\newcommand{\cast}{\ensuremath{\left\{
-      \texttt{\$signed}, \texttt{\$unsigned}, \texttt{signed'}, \texttt{unsigned'}
-    \right\}}}
+\newcommand{\cast}{\ensuremath{\left\{\texttt{\$signed}, \texttt{\$unsigned}\right\}}}
 \newcommand{\comp}{\ensuremath{\left\{
       \texttt{===}, \texttt{!==}, \texttt{==?}, \texttt{!=?}, \texttt{==},
       \texttt{!=}, \texttt{>}, \texttt{>=}, \texttt{<}, \texttt{<=}
     \right\}}}
-\newcommand{\logic}{\ensuremath{\left\{
-      \texttt{\&\&}, \texttt{||}, \texttt{->}, \texttt{<->}
-    \right\}}}
+\newcommand{\logic}{\ensuremath{\left\{\texttt{\&\&}, \texttt{||}, \texttt{->}, \texttt{<->}\right\}}}
 \newcommand{\red}{\ensuremath{\left\{
       \texttt{\&}, \mytilde\texttt{\&}, \texttt{|}, \mytilde\texttt{|}, \texttt{\^{}},
       \mytilde\texttt{\^{}}, \texttt{\^{}}\mytilde, \texttt{!}
@@ -63,173 +65,235 @@
 
 \section*{Verilog Size Checking}
 
-\subsection*{Context of Expressions}
+
+\subsection*{Expressions}
 
 \begin{itemize}
-    \item Set of operands: $\mathcal{O}$.
-    \item Set of contexts identifiers: $\mathcal{C} \simeq \mathbb{N}$.
-    \item A context $q \subseteq \mathcal{Q}$ with
-          $\mathcal{Q} \coloneq
-              \left\{\underbrace{\A s}_{\text{Atom}} \mid s \in \mathbb{N}\right\} \sqcup
-              \left\{\underbrace{\D c}_{\text{Dependency}} \mid c \in \mathcal{C}\right\}$.
-
-    \item $\Pi: \mathcal{C} \to 2^{\mathcal{Q}}$ a mapping context identifiers to their set.
-    \item $e \in \mathcal{E}$, with $\mathcal{E}$ the set of expressions,
-    \item $c \in \mathcal{C}$, a context identifier.
-    \item $\Phi$ compute the size of a lvalue.
+    \item $\mathcal{A}$ is the set of atoms in an expression. In the AST, they correspond to leaves. In System-Verilog, they refer to what the standard calls an ``operand'' (variables, integers, function calls, slices of a variable, etc.).
+    \item $\mathcal{E}$ is the set of System-Verilog expressions. We have $\mathcal{A} \subset \mathcal{E}$. An expression either contains an expression or is an atom.
 \end{itemize}
 
+\subsection*{Contexts}
+\begin{itemize}
+    \item Set of contexts identifiers: $\mathcal{C} \simeq \mathbb{N}$.
+    \item A context $q \subseteq \mathcal{Q}$ with:
+          \begin{equation*}
+              \mathcal{Q} \coloneq
+              \underbrace{\left\{\Size s \mid s \in \mathbb{N}\right\}}_{\text{Atomic size}}
+              \sqcup
+              \underbrace{\left\{\Id c \mid c \in \mathcal{C}\right\}}_{\text{Identity dependencies}}
+              \sqcup
+              \underbrace{\left\{\Add~(c_1, c_2) \mid c_1 \in \mathcal{C}, c_2 \in \mathcal{C}\right\}}_{\text{Additive dependencies}}
+              \sqcup
+              \underbrace{\left\{\Mul~(s, c) \mid c \in \mathcal{C}, s \in \mathbb{N}\right\}}_{\text{Multiplicative dependencies}}
+          \end{equation*}
+          A context represent all the information needed to compute the size of associated expressions.
+
+    \item $\Pi: \mathcal{C} \rightharpoonup  2^{\mathcal{Q}}$ a partial mapping from context identifiers to
+          the smallest possible context set. This means that:
+          \begin{equation*}
+              \Pi(c) \subset \Pi'(c) \implies \Pi(c) = \Pi'(c)
+          \end{equation*}
+\end{itemize}
+
+\subsection*{Rules}
+The statement $\Pi \vdash e : c$ means:
+\begin{center}
+    In the context environment $\Pi$, all the information needed to compute the size of the expression $e$ is in the context-set identified by $c$ in $\Pi$.
+\end{center}
+
+
+We use the following notations:
+\begin{itemize}
+    \item $\Gamma$ compute the size of an atom.
+    \item $\Phi$ compute the size of a lvalue.
+\end{itemize}
 
 
 \subsubsection*{Base case}
 
 \begin{equation*}
     \begin{prooftree}
-        \hypo{\Pi[c] \coloneq \Pi[c] \cup \left\{\A s\right\}}
-        \hypo{s \coloneq \Gamma(o)}
-        \hypo{o \in \mathcal{O}}
-        \infer3{\Pi\vdash o: c}
+        \hypo{s = \Gamma(e)}
+        \hypo{\Pi = \left\{c \mapsto q\right\}}
+        \hypo{\Size s \in q}
+        \hypo{e \in \mathcal{A}}
+        \infer4{\Pi\vdash e: c}
     \end{prooftree}
 \end{equation*}
 
 \subsubsection*{Operators}
 
-\begin{equation*}
-    \def\arraystretch{4}
-    \begin{array}{cc}
-        \oplus \in \binOp
-         &
-        \begin{prooftree}
-            \hypo{\Pi \vdash a: c}
-            \hypo{\Pi \vdash b: c}
-            \infer2{\Pi \vdash a \oplus b: c}
-        \end{prooftree}
-        \\
-        \oplus \in \preUnOp
-         &
-        \begin{prooftree}
-            \hypo{\Pi \vdash e: c}
-            \infer1{\Pi \vdash \oplus e: c}
-        \end{prooftree}
-        \\
-        \oplus \in \postUnOp
-         &
-        \begin{prooftree}
-            \hypo{\Pi \vdash e: c}
-            \infer1{\Pi \vdash e \oplus: c}
-        \end{prooftree}
-        \\
-        \oplus \in \cast
-         &
-        \begin{prooftree}
-            \hypo{\Pi[c'] \coloneq \left\{\right\}}
-            \hypo{\Pi[c] \coloneq \Pi[c] \cup \left\{\D c'\right\}}
-            \hypo{\Pi \vdash e: c'}
-            \infer3{\Pi \vdash \oplus \left(e\right): c}
-        \end{prooftree}
-        \\
-        \oplus \in \comp
-         &
-        \begin{prooftree}
-            \hypo{\Pi[c] \coloneq \Pi[c] \cup \left\{\A 1\right\}}
-            \hypo{\Pi[c'] \coloneq \left\{\right\}}
-            \hypo{\Pi \vdash a: c'}
-            \hypo{\Pi \vdash b: c'}
-            \infer4{\Pi \vdash a \oplus b: c}
-        \end{prooftree}
-        \\
-        \oplus \in \logic
-         &
-        \begin{prooftree}
-            \hypo{\Pi[c] \coloneq \Pi[c] \cup \left\{\A 1\right\}}
-            \hypo{\hypo{\Pi[c'] \coloneq \left\{\right\}}}
-            \hypo{\Pi \vdash a: c'}
-            \hypo{\hypo{\Pi[c''] \coloneq \left\{\right\}}}
-            \hypo{\Pi \vdash b: c''}
-            \infer5{\Pi \vdash a  \oplus b: c}
-        \end{prooftree}
-        \\
-        \oplus \in \red
-         &
-        \begin{prooftree}
-            \hypo{\Pi[c] \coloneq \Pi[c] \cup \left\{\A 1\right\}}
-            \hypo{\hypo{\Pi[c'] \coloneq \left\{\right\}}}
-            \hypo{\Pi \vdash e: c'}
-            \infer3{\Pi \vdash \oplus e: c}
-        \end{prooftree}
-        \\
-        \oplus \in \shift
-         &
-        \begin{prooftree}
-            \hypo{\Pi \vdash a: c}
-            \hypo{\hypo{\Pi[c'] \coloneq \left\{\right\}}}
-            \hypo{\Pi \vdash b: c'}
-            \infer3{\Pi \vdash a \oplus b: c}
-        \end{prooftree}
-        \\
-        \oplus \in \assignBinOp
-         &
-        \begin{prooftree}
-            \hypo{s \coloneq \Phi(l)}
-            \hypo{\Pi[c] \coloneq \Pi[c] \cup \left\{\A s\right\}}
-            \hypo{\hypo{\Pi[c'] \coloneq \left\{\A s\right\}}}
-            \hypo{\Pi \vdash b: c'}
-            \infer4{\Pi \vdash l \oplus b: c}
-        \end{prooftree}
-        \\
-        \oplus \in \assignShift
-         &
-        \begin{prooftree}
-            \hypo{s \coloneq \Phi(l)}
-            \hypo{\Pi[c] \coloneq \Pi[c] \cup \left\{\A s\right\}}
-            \hypo{\hypo{\Pi[c'] \coloneq \left\{\right\}}}
-            \hypo{\Pi \vdash b: c'}
-            \infer4{\Pi \vdash l \oplus b: c}
-        \end{prooftree}
-    \end{array}
-\end{equation*}
+\begin{itemize}[leftmargin=*]
+    \setlength{\itemsep}{2em}
 
-\begin{spreadlines}{2em}
-    \begin{gather*}
-        \begin{prooftree}
-            \hypo{\hypo{\Pi[c'] \coloneq \left\{\right\}}}
-            \hypo{\Pi \vdash e: c'}
-            \hypo{\Pi \vdash a: c}
-            \hypo{\Pi \vdash b: c}
-            \infer4{\Pi \vdash e \texttt{?} a \texttt{:} b: c}
-        \end{prooftree}
-        \\
-        \begin{prooftree}
-            \hypo{\hypo{\Pi[c_1] \coloneq \left\{\right\}}}
-            \hypo{\Pi \vdash e_1: c_1}
-            \hypo{\dots}
-            \hypo{\hypo{\Pi[c_k] \coloneq \left\{\right\}}}
-            \hypo{\Pi \vdash e_k: c_k}
-            \hypo{\Pi[c] \coloneq \Pi[c] \cup \left\{\D c_1,\dots, \D c_k\right\}}
-            \infer6{\Pi \vdash \texttt{\{}e_1, \texttt{\dots}, e_k \texttt{\}}: c}
-        \end{prooftree}
-        \\
-        \begin{prooftree}
-            \hypo{i \in \mathbb{N}}
-            \hypo{\hypo{\Pi[c_1] \coloneq \left\{\right\}}}
-            \hypo{\Pi \vdash e_1: c_1}
-            \hypo{\dots}
-            \hypo{\hypo{\Pi[c_k] \coloneq \left\{\right\}}}
-            \hypo{\Pi \vdash e_k: c_k}
-            \hypo{\Pi[c] \coloneq \Pi[c] \cup \left\{\D c_1,\dots, \D c_k\right\}}
-            \infer7{\Pi \vdash \texttt{\{}i\texttt{\{}e_1, \texttt{\dots}, e_k \texttt{\}}\texttt{\}}: c}
-        \end{prooftree}
-        \\
-        \begin{prooftree}
-            \hypo{\hypo{\Pi[c'] \coloneq \left\{\right\}}}
-            \hypo{\Pi \vdash a: c'}
-            \hypo{\Pi \vdash e_1: c'}
-            \hypo{\dots}
-            \hypo{\Pi \vdash e_k: c'}
-            \hypo{\Pi[c] \coloneq \Pi[c] \cup \left\{\A 1\right\}}
-            \infer6{\Pi \vdash a~\texttt{inside}~\texttt{\{}e_1, \texttt{\dots}, e_k \texttt{\}}: c}
-        \end{prooftree}
-    \end{gather*}
-\end{spreadlines}
+    \item $\oplus \in \binOp$:
+
+          \begin{equation*}
+              \begin{prooftree}
+                  \hypo{\Pi \vdash a: c}
+                  \hypo{\Pi \vdash b: c}
+                  \infer2{\Pi \vdash a \oplus b: c}
+              \end{prooftree}
+          \end{equation*}
+
+    \item $\oplus \in \unOp$:
+
+          \begin{equation*}
+              \begin{prooftree}
+                  \hypo{\Pi \vdash e: c}
+                  \infer1{\Pi \vdash \oplus e: c}
+              \end{prooftree}
+          \end{equation*}
+
+    \item $\oplus \in \cast$:
+
+          \begin{equation*}
+              \begin{prooftree}
+                  \hypo{\Pi' \vdash e: c'}
+                  \hypo{c \notin \dom \Pi'}
+                  \hypo{\Pi = \Pi' \sqcup \left\{c \mapsto q\right\}}
+                  \hypo{\Id c' \in q}
+                  \infer4{\Pi \vdash \oplus \left(e\right): c}
+              \end{prooftree}
+          \end{equation*}
+
+    \item $\oplus \in \comp$:
+
+          \begin{equation*}
+              \begin{prooftree}
+                  \hypo{\Pi' \vdash a: c'}
+                  \hypo{\Pi' \vdash b: c'}
+                  \hypo{c \notin \dom \Pi'}
+                  \hypo{\Pi = \Pi' \sqcup \left\{c \mapsto q\right\}}
+                  \hypo{\Size 1 \in q}
+                  \infer5{\Pi \vdash a \oplus b: c}
+              \end{prooftree}
+          \end{equation*}
+
+    \item $\oplus \in \logic$:
+
+          \begin{equation*}
+              \begin{prooftree}
+                  \hypo{\Pi_1 \vdash a: c_1}
+                  \hypo{\Pi_2 \vdash b: c_2}
+                  \hypo{\dom \Pi_1 \cap \dom \Pi_2 = \emptyset}
+                  \hypo{c \notin \dom \Pi_1 \sqcup \dom \Pi_2}
+                  \hypo{\Pi = \Pi_1 \sqcup \Pi_2 \sqcup \left\{c \mapsto q\right\}}
+                  \hypo{\Size 1 \in q}
+                  \infer6{\Pi \vdash a \oplus b: c}
+              \end{prooftree}
+          \end{equation*}
+
+    \item $\oplus \in \red$:
+
+          \begin{equation*}
+              \begin{prooftree}
+                  \hypo{\Pi' \vdash a: c'}
+                  \hypo{c \notin \dom \Pi'}
+                  \hypo{\Pi = \Pi' \sqcup \left\{c \mapsto q\right\}}
+                  \hypo{\Size 1 \in q}
+                  \infer4{\Pi \vdash \oplus a: c}
+              \end{prooftree}
+          \end{equation*}
+
+    \item $\oplus \in \shift$:
+
+          \begin{equation*}
+              \begin{prooftree}
+                  \hypo{\Pi_1 \vdash a: c}
+                  \hypo{\Pi_2 \vdash b: c'}
+                  \hypo{\Pi = \Pi_1 \sqcup \Pi_2}
+                  \hypo{\dom \Pi_1 \cap \dom \Pi_2 = \emptyset}
+                  \infer4{\Pi \vdash a \oplus b: c}
+              \end{prooftree}
+          \end{equation*}
+
+    \item $\oplus \in \assignBinOp$:
+
+          \begin{equation*}
+              \begin{prooftree}
+                  \hypo{s = \Phi(l)}
+                  \hypo{\Pi' \vdash b: c'}
+                  \hypo{\Size s \in \Pi'(c')}
+                  \hypo{c \notin \dom \Pi'}
+                  \hypo{\Pi = \Pi' \sqcup \left\{c \mapsto q\right\}}
+                  \hypo{\Size s \in q}
+                  \infer6{\Pi \vdash l \oplus b: c}
+              \end{prooftree}
+          \end{equation*}
+
+    \item $\oplus \in \assignShift$:
+
+          \begin{equation*}
+              \begin{prooftree}
+                  \hypo{s = \Phi(l)}
+                  \hypo{\Pi' \vdash b: c'}
+                  \hypo{c \notin \dom \Pi'}
+                  \hypo{\Pi = \Pi' \sqcup \left\{c \mapsto q\right\}}
+                  \hypo{\Size s \in q}
+                  \infer5{\Pi \vdash l \oplus b: c}
+              \end{prooftree}
+          \end{equation*}
+
+
+    \item If expression:
+
+          \begin{equation*}
+              \begin{prooftree}
+                  \hypo{\Pi_1 \vdash e: c'}
+                  \hypo{\Pi_2 \vdash a: c}
+                  \hypo{\Pi_2 \vdash b: c}
+                  \hypo{\Pi = \Pi_1 \sqcup \Pi_2}
+                  \hypo{\dom \Pi_1 \cap \dom \Pi_2 = \emptyset}
+                  \infer5{\Pi \vdash e \texttt{?} a \texttt{:} b: c}
+              \end{prooftree}
+          \end{equation*}
+
+
+    \item Concatenation:
+
+          \begin{equation*}
+              \begin{prooftree}
+                  \hypo{\Pi_1 \vdash e_1: c_1}
+                  \hypo{\Pi_2 \vdash e_2: c_2}
+                  \hypo{\dom \Pi_1 \cap \dom \Pi_2 = \emptyset}
+                  \hypo{c \notin \dom \Pi_1 \sqcup \dom \Pi_2}
+                  \hypo{\Pi = \Pi_1 \sqcup \Pi_2 \sqcup \left\{c \mapsto q\right\}}
+                  \hypo{\Add~(c_1, c_2) \in q}
+                  \infer6{\Pi \vdash \texttt{\{}e_1, e_2 \texttt{\}}: c}
+              \end{prooftree}
+          \end{equation*}
+
+
+    \item Replication:
+
+          \begin{equation*}
+              \begin{prooftree}
+                  \hypo{i \in \mathbb{N}}
+                  \hypo{\Pi' \vdash e: c'}
+                  \hypo{c \notin \dom \Pi'}
+                  \hypo{\Pi = \Pi' \sqcup \left\{c \mapsto q\right\}}
+                  \hypo{\Mul~(i, c') \in q}
+                  \infer5{\Pi \vdash \texttt{\{}i~e\texttt{\}}: c}
+              \end{prooftree}
+          \end{equation*}
+
+
+    \item Inside:
+
+          \begin{equation*}
+              \begin{prooftree}
+                  \hypo{\Pi' \vdash a: c'}
+                  \hypo{\Pi' \vdash e_1: c'}
+                  \hypo{\dots}
+                  \hypo{\Pi' \vdash e_k: c'}
+                  \hypo{c \notin \dom \Pi'}
+                  \hypo{\Pi = \Pi' \sqcup \left\{c \mapsto q\right\}}
+                  \hypo{\Size 1 \in q}
+                  \infer7{\Pi \vdash a~\texttt{inside}~\texttt{\{}e_1, \texttt{\dots}, e_k \texttt{\}}: c}
+              \end{prooftree}
+          \end{equation*}
+\end{itemize}
 
 \end{document}
