@@ -44,9 +44,11 @@ contextDepGraph eName = do
         return $ ctxNode <> edgesList
 
     addEdge _ (Atom _ _) = mempty
-    addEdge pId (CastDep cId _) = edge (nPrefix pId) (nPrefix cId) [textLabel "cast"]
-    addEdge pId (ConcatDep l) = foldMap (\(cId, _) -> edge (nPrefix pId) (nPrefix cId) [textLabel "concat"]) l
-    addEdge pId (ReplDep _ l) = foldMap (\(cId, _) -> edge (nPrefix pId) (nPrefix cId) [textLabel "repl"]) l
+    addEdge pId (IdDep cId _) = edge (nPrefix pId) (nPrefix cId) [textLabel "id"]
+    addEdge pId (AddDep {lhsCtx, rhsCtx}) =
+      edge (nPrefix pId) (nPrefix lhsCtx) [textLabel "addLhs"]
+        <> edge (nPrefix pId) (nPrefix rhsCtx) [textLabel "addRhs"]
+    addEdge pId (MulDep i cId _) = edge (nPrefix pId) (nPrefix cId) [textLabel $ "mul (x" <> T.show i <> ")"]
 
     nPrefix eId = "dep_" <> T.show eId
 
@@ -85,7 +87,7 @@ instance ExprToGraph ContextAst where
 contextAstGraph :: ExprName -> Expr -> ExprContext -> Dot Text
 contextAstGraph eName e eCtx = runReader (runContextAst $ buildGraph eName e) eCtx
 
-data CtxKind = AtomKind | CastDepKind | ConcatDepKind | ReplDepKind
+data CtxKind = AtomKind | IdDepKind | AddDepKind | MulDepKind
 
 data ContextDisplayInfo = CtxDisplayInfo
   { ctxId :: ContextId,
@@ -109,23 +111,23 @@ inCtxColor = RGB 200 200 200
 atomColor :: Color
 atomColor = RGB 255 78 77
 
-castColor :: Color
-castColor = RGB 253 178 0
+idColor :: Color
+idColor = RGB 253 178 0
 
-concatColor :: Color
-concatColor = RGB 2 232 137
+addColor :: Color
+addColor = RGB 80 160 80
 
-replColor :: Color
-replColor = RGB 2 75 235
+mulColor :: Color
+mulColor = RGB 2 75 235
 
 legend :: ContextId -> Dot Text
 legend cId = cluster (Str "legend") $ do
   graphAttrs [Comment "Legend", textLabel "Legend"]
   node (T.show cId <> "_in_ctx") $ [Shape BoxShape, textLabel "In Context"] <> colorNode inCtxColor
   node (T.show cId <> "_atom") $ [Shape BoxShape, textLabel "Atom"] <> colorNode atomColor
-  node (T.show cId <> "_cast") $ [Shape BoxShape, textLabel "Cast Dependency"] <> colorNode castColor
-  node (T.show cId <> "_concat") $ [Shape BoxShape, textLabel "Concat Dependency"] <> colorNode concatColor
-  node (T.show cId <> "_repl") $ [Shape BoxShape, textLabel "Repl Dependency"] <> colorNode replColor
+  node (T.show cId <> "_id") $ [Shape BoxShape, textLabel "Identity Dependency"] <> colorNode idColor
+  node (T.show cId <> "_add") $ [Shape BoxShape, textLabel "Addition Dependency"] <> colorNode addColor
+  node (T.show cId <> "_mul") $ [Shape BoxShape, textLabel "Multiplication Dependency"] <> colorNode mulColor
 
 instance ExprToGraph ContextDisplay where
   prefix :: ExprId -> ContextDisplay Text
@@ -141,18 +143,16 @@ instance ExprToGraph ContextDisplay where
   exprAttr :: ExprId -> ContextDisplay Attributes
   exprAttr eId = do
     nKind <- ContextDisplay . asks $ Map.lookup eId . exprStatus
-    bgCol <- case nKind of
-      Nothing -> do
-        eCid <- exprContext eId
-        cId <- ContextDisplay . asks $ ctxId
-        if eCid == cId
-          then return $ inCtxColor
-          else contextColor (Just 0.1) eCid
-      Just AtomKind -> return atomColor
-      Just CastDepKind -> return castColor
-      Just ConcatDepKind -> return concatColor
-      Just ReplDepKind -> return replColor
-    return $ colorNode bgCol
+    eCid <- exprContext eId
+    cId <- ContextDisplay . asks $ ctxId
+    let bgCol = case nKind of
+          Nothing -> do
+            if eCid == cId
+              then Just inCtxColor
+              else Nothing
+          Just AtomKind -> Just atomColor
+          Just _ -> Nothing
+    colorNode <$> maybe (contextColor (Just 0.1) eCid) pure bgCol
 
   lValueText :: LeftValue -> Text -> ContextDisplay Text
   lValueText lValue txt = return $ txt <> "\nsize: " <> T.show (leftSize lValue)
@@ -161,7 +161,14 @@ instance ExprToGraph ContextDisplay where
   lValueAttr _ = return [Style [SItem Dashed []]]
 
   edgesAttr :: ExprId -> ExprId -> ContextDisplay Attributes
-  edgesAttr _ _ = pure []
+  edgesAttr _ childId = do
+    nKind <- ContextDisplay . asks $ Map.lookup childId . exprStatus
+    let bgCol = case nKind of
+          Just IdDepKind -> Just idColor
+          Just AddDepKind -> Just addColor
+          Just MulDepKind -> Just mulColor
+          _ -> Nothing
+    return $ maybe [] colorEdge bgCol
 
   transformGraph :: ExprName -> Expr -> Dot Text -> ContextDisplay (Dot Text)
   transformGraph eName _ g = do
@@ -181,9 +188,11 @@ graphContext eName e eCtx cId = runReader (runContextDisplay $ buildGraph eName 
             }
 
     go (Atom _ eId) = Map.singleton eId AtomKind
-    go (CastDep _ eId) = Map.singleton eId CastDepKind
-    go (ConcatDep l) = foldMap (\(_, eId) -> Map.singleton eId ConcatDepKind) l
-    go (ReplDep _ l) = foldMap (\(_, eId) -> Map.singleton eId ConcatDepKind) l
+    go (IdDep _ eId) = Map.singleton eId IdDepKind
+    go (AddDep {lhsExpr, rhsExpr}) =
+      Map.singleton lhsExpr AddDepKind
+        <> Map.singleton rhsExpr AddDepKind
+    go (MulDep _ _ eId) = Map.singleton eId MulDepKind
 
 contextGraphs :: ExprName -> Expr -> Dot Text
 contextGraphs eName e =
@@ -192,5 +201,4 @@ contextGraphs eName e =
       ctxGs = (\cId -> (cId, graphContext eName e ctx cId)) <$> toList (getCtxIds ctx)
    in do
         cluster (Str $ "Context Ast of " <> T.show eName) ctxAstG
-        -- cluster (Str $ "Context Dependencies of " <> T.show eName) ctxDegG
         mapM_ (\(cId, g) -> cluster (Str $ "Context " <> T.show cId) g) ctxGs

@@ -15,7 +15,6 @@ module Context.Context
   )
 where
 
-import Control.Arrow (Arrow (second))
 import Control.Monad.Reader
 import Control.Monad.State.Strict
 import Data.Foldable
@@ -35,9 +34,9 @@ instance Show ContextId where
   show (CId x) = show x
 
 data ContextElm
-  = CastDep ContextId ExprId
-  | ConcatDep [(ContextId, ExprId)]
-  | ReplDep Int [(ContextId, ExprId)]
+  = IdDep ContextId ExprId
+  | AddDep {lhsCtx :: ContextId, lhsExpr :: ExprId, rhsCtx :: ContextId, rhsExpr :: ExprId}
+  | MulDep Int ContextId ExprId
   | Atom Size ExprId
   deriving (Eq, Ord)
 
@@ -112,14 +111,20 @@ ctx <=| elm = modify $ \s ->
 atom :: (ToExprId a) => Size -> a -> ContextElm
 atom s = Atom s . exprId
 
-castDep :: ContextId -> Expr -> ContextElm
-castDep s = CastDep s . exprId
+idDep :: ContextId -> Expr -> ContextElm
+idDep s = IdDep s . exprId
 
-concatDep :: [(ContextId, Expr)] -> ContextElm
-concatDep = ConcatDep . fmap (second exprId)
+addDep :: (ContextId, Expr) -> (ContextId, Expr) -> ContextElm
+addDep lhs rhs =
+  AddDep
+    { lhsCtx = fst lhs,
+      lhsExpr = exprId $ snd lhs,
+      rhsCtx = fst rhs,
+      rhsExpr = exprId $ snd rhs
+    }
 
-replDep :: Int -> [(ContextId, Expr)] -> ContextElm
-replDep i = ReplDep i . fmap (second exprId)
+mulDep :: Int -> ContextId -> Expr -> ContextElm
+mulDep i c = MulDep i c . exprId
 
 (|-) :: Expr -> ContextId -> CtxState ()
 e |- c =
@@ -155,7 +160,7 @@ e |- c =
     childrenContext (Cast _ arg) = do
       c' <- freshContext
       arg |- c'
-      c <=| castDep c' e
+      c <=| idDep c' arg
       ------------------------------
       e |-> c
     childrenContext (Comparison _ lhs rhs) = do
@@ -212,28 +217,24 @@ e |- c =
       fBranch |- c
       ------------------------------
       e |-> c
-    childrenContext (Concat l) = do
-      ctx <-
-        mapM
-          ( \e_i -> do
-              c_i <- freshContext
-              e_i |- c_i
-              return (c_i, e_i)
-          )
-          l
-      c <=| concatDep ctx
+    childrenContext (UnaryConcat arg) = do
+      c' <- freshContext
+      arg |- c'
+      c <=| idDep c' arg
       ------------------------------
       e |-> c
-    childrenContext (ReplConcat i l) = do
-      ctx <-
-        mapM
-          ( \e_i -> do
-              c_i <- freshContext
-              e_i |- c_i
-              return (c_i, e_i)
-          )
-          l
-      c <=| replDep i ctx
+    childrenContext (BinaryConcat lhs rhs) = do
+      cLhs <- freshContext
+      lhs |- cLhs
+      cRhs <- freshContext
+      rhs |- cRhs
+      c <=| addDep (cLhs, lhs) (cRhs, rhs)
+      ------------------------------
+      e |-> c
+    childrenContext (Repl i arg) = do
+      c' <- freshContext
+      arg |- c'
+      c <=| mulDep i c' arg
       ------------------------------
       e |-> c
     childrenContext (Inside arg l) = do
@@ -294,8 +295,6 @@ solveCtx ctx = do
 
     findSize :: ContextElm -> CtxSolver Size
     findSize (Atom s _) = return s
-    findSize (CastDep depId _) = contextSize depId
-    findSize (ConcatDep l) = foldlM (\acc (depId, _) -> contextSize depId >>= return . (acc +)) (Size 0) l
-    findSize (ReplDep i l) = do
-      Size sumSize <- foldlM (\acc (depId, _) -> contextSize depId >>= return . (acc +)) (Size 0) l
-      return . Size $ sumSize * i
+    findSize (IdDep depId _) = contextSize depId
+    findSize (AddDep {lhsCtx, rhsCtx}) = (+) <$> contextSize lhsCtx <*> contextSize rhsCtx
+    findSize (MulDep i depId _) = (* Size i) <$> contextSize depId

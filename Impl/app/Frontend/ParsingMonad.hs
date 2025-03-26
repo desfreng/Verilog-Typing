@@ -7,7 +7,9 @@ import Control.Monad
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State.Strict
+import Data.Foldable1 (Foldable1 (toNonEmpty))
 import Data.List qualified as List
+import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe
@@ -15,6 +17,7 @@ import Data.Text.Lazy (Text)
 import Data.Text.Lazy qualified as T
 import Data.Word (Word8)
 import Expr
+import Frontend.Reversed
 import Frontend.Tokens
 import Model
 import Numeric
@@ -170,14 +173,33 @@ buildLeftValue :: Expr -> Parsing LeftValue
 buildLeftValue e = go $ exprKind e
   where
     go (Operand op) = toParsing . buildLValue $ LeftAtom op
-    go (Concat l) = do
-      lLeft <- mapM buildLeftValue l
-      let finalSize = foldl (+) 0 $ leftSize <$> lLeft
-       in toParsing . buildLValue $ LeftConcat lLeft finalSize
+    go (UnaryConcat arg) = do
+      lArg <- buildLeftValue arg
+      toParsing . buildLValue $ LeftConcat (NE.singleton lArg) (leftSize lArg)
+    go (BinaryConcat lhs rhs) = do
+      lLhs <- buildLeftValue lhs
+      lRhs <- buildLeftValue rhs
+      let finalSize = leftSize lLhs + leftSize lRhs
+      toParsing . buildLValue $ LeftConcat (lLhs NE.:| [lRhs]) finalSize
     go _ = fail "This is not a left value."
 
 parseOperand :: Text -> Parsing Expr
 parseOperand = getOperand >=> inExpr . Operand
+
+parseConcat :: Reversed Expr -> Parsing Expr
+parseConcat = go . toNonEmpty
+  where
+    go (x NE.:| []) = inExpr $ UnaryConcat x
+    go (x NE.:| y : l) = goBinary x y l
+
+    goBinary x y [] = inExpr $ BinaryConcat x y
+    goBinary x y (z : l) = goBinary y z l >>= inExpr . BinaryConcat x
+
+parseRepl :: VerilogInteger -> Reversed Expr -> Parsing Expr
+parseRepl v l = parseConcat l >>= inExpr . Repl (fromEnum $ value v)
+
+parseInside :: Expr -> Reversed Expr -> Parsing Expr
+parseInside arg = inExpr . Expr.Inside arg . toNonEmpty
 
 parseAssign :: Expr -> AssignBinaryOp -> Expr -> Parsing Expr
 parseAssign t op e = do

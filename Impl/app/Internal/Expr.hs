@@ -1,5 +1,6 @@
 module Internal.Expr where
 
+import Data.List.NonEmpty (NonEmpty)
 import Data.Text.Lazy (Text)
 import Data.Text.Lazy qualified as T
 
@@ -77,7 +78,7 @@ data Signedness = Signed | Unsigned
 
 data LeftValue
   = LeftAtom Operand ExprId
-  | LeftConcat {args :: [LeftValue], concatSize :: Size, concatTag :: ExprId}
+  | LeftConcat {args :: NonEmpty LeftValue, concatSize :: Size, concatTag :: ExprId}
   deriving (Show)
 
 data Expr = E {e :: ExprKind, exprTag :: ExprId}
@@ -99,9 +100,10 @@ data ExprKind
   | BinOpAssign LeftValue AssignBinaryOp Expr
   | ShiftAssign LeftValue ShiftBinaryOp Expr
   | Conditional Expr Expr Expr
-  | Concat [Expr]
-  | ReplConcat Int [Expr]
-  | Inside Expr [Expr]
+  | UnaryConcat Expr
+  | BinaryConcat Expr Expr
+  | Repl Int Expr
+  | Inside Expr (NonEmpty Expr)
   deriving (Show)
 
 {-# INLINE exprKind #-}

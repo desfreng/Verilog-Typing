@@ -1,6 +1,7 @@
 var x: 10
 var u: 1
-var y: 20
+var y: 3
+var z: 4
 var tmp: 5
 
-expr e: x + ({tmp, tmp} = x ? {y, 1'd1} : u) / x == 'b1001
+expr e: x + ({tmp, tmp} = x ? {3 {signed(& y), 1'd1 + z}} : u) / x == {4'b1001, 3'b11, 6'd43}

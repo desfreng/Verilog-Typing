@@ -14,6 +14,7 @@ module Graph
       ),
     exprToGraph,
     colorNode,
+    colorEdge,
   )
 where
 
@@ -48,10 +49,10 @@ children (Shift _ lhs rhs) = [("lhs", Right lhs), ("rhs", Right rhs)]
 children (Pow lhs rhs) = [("lhs", Right lhs), ("rhs", Right rhs)]
 children (BinOpAssign v _ expr) = [("lvalue", Left v), ("expr", Right expr)]
 children (ShiftAssign v _ expr) = [("lvalue", Left v), ("expr", Right expr)]
-children (Conditional cond tBranch fBranch) =
-  [("cond", Right cond), ("true", Right tBranch), ("false", Right fBranch)]
-children (Concat l) = numChildren [] $ Right <$> l
-children (ReplConcat _ l) = numChildren [] $ Right <$> l
+children (Conditional cond tb fb) = [("cond", Right cond), ("true", Right tb), ("false", Right fb)]
+children (UnaryConcat arg) = [("arg", Right arg)]
+children (BinaryConcat lhs rhs) = [("lhs", Right lhs), ("rhs", Right rhs)]
+children (Repl _ arg) = [("arg", Right arg)]
 children (Inside arg l) = numChildren [("item", Right arg)] $ Right <$> l
 
 lValueChildren :: LeftValue -> [(Text, Either LeftValue a)]
@@ -75,8 +76,9 @@ exprLabel (BinOpAssign _ None _) = "Assignment"
 exprLabel (BinOpAssign _ op _) = T.show op <> " Assignment"
 exprLabel (ShiftAssign _ op _) = T.show op <> " Assignment"
 exprLabel (Conditional _ _ _) = "Conditional"
-exprLabel (Concat _) = "Concatenation"
-exprLabel (ReplConcat i _) = "Replication (x" <> T.show i <> ")"
+exprLabel (UnaryConcat _) = "Concatenation (singleton)"
+exprLabel (BinaryConcat _ _) = "Concatenation (binary)"
+exprLabel (Repl i _) = "Replication (x" <> T.show i <> ")"
 exprLabel (Inside _ _) = "Inside"
 
 lValueLabel :: LeftValue -> Text
@@ -100,6 +102,9 @@ bgColor _ = error "Unable to extract color components"
 
 colorNode :: Color -> Attributes
 colorNode bgCol = [FillColor [toWC bgCol], FontColor $ bgColor bgCol, Style [SItem Filled []]]
+
+colorEdge :: Color -> Attributes
+colorEdge col = [FillColor [toWC col], Color [toWC col], PenWidth 5]
 
 class (Monad m) => ExprToGraph m where
   prefix :: ExprId -> m Text

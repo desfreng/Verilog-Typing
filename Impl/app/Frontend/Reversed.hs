@@ -5,46 +5,39 @@ module Frontend.Reversed where
 
 import Control.Applicative
 import Control.Monad
-import Data.Foldable (Foldable (foldMap))
-import Data.Foldable qualified as F
+import Data.Foldable
+import Data.Foldable1
 import Data.Monoid
 import Data.Semigroup
 import Data.String
-import GHC.IsList
-import Prelude (Eq, Ord, Show (..), (.))
+import Prelude (Eq, Ord, Show (..), ($), (.))
 
-data Reversed a = Empty | (Reversed a) :> a deriving (Eq, Ord, Foldable, Functor)
-
-instance IsList (Reversed a) where
-  type Item (Reversed a) = a
-
-  {-# INLINE fromList #-}
-  fromList :: [a] -> Reversed a
-  fromList [] = Empty
-  fromList (hd : tl) = fromList tl :> hd
-
-  toList :: Reversed a -> [a]
-  toList = F.toList
+data Reversed a = Start a | (Reversed a) :> a deriving (Eq, Ord, Functor)
 
 {-# INLINE singleton #-}
 singleton :: a -> Reversed a
-singleton x = Empty :> x
+singleton x = Start x
 
 {-# INLINE map #-}
 map :: (a -> b) -> Reversed a -> Reversed b
-map _ Empty = Empty
+map f (Start x) = Start $ f x
 map f (l :> x) = fmap f l :> f x
 
 instance Semigroup (Reversed a) where
   {-# INLINE (<>) #-}
   (<>) :: Reversed a -> Reversed a -> Reversed a
   (l' :> x) <> l = (l' <> l) :> x
-  Empty <> l = l
+  (Start x) <> l = l :> x
 
-instance Monoid (Reversed a) where
-  {-# INLINE mempty #-}
-  mempty :: Reversed a
-  mempty = Empty
+instance Foldable Reversed where
+  foldMap :: (Monoid m) => (a -> m) -> Reversed a -> m
+  foldMap f (Start x) = f x
+  foldMap f (l :> x) = foldMap f l <> f x
+
+instance Foldable1 Reversed where
+  foldMap1 :: (Semigroup m) => (a -> m) -> Reversed a -> m
+  foldMap1 f (Start x) = f x
+  foldMap1 f (l :> x) = foldMap1 f l <> f x
 
 instance Applicative Reversed where
   {-# INLINE pure #-}
@@ -53,23 +46,12 @@ instance Applicative Reversed where
 
   {-# INLINE liftA2 #-}
   liftA2 :: (a -> b -> c) -> Reversed a -> Reversed b -> Reversed c
-  liftA2 f xs ys = foldMap (\a -> foldMap (singleton . f a) ys) xs
+  liftA2 f xs ys = foldMap1 (\a -> foldMap1 (singleton . f a) ys) xs
 
 instance Monad Reversed where
   {-# INLINE (>>=) #-}
   (>>=) :: Reversed a -> (a -> Reversed b) -> Reversed b
-  xs >>= f = foldMap f xs
-
-instance Alternative Reversed where
-  {-# INLINE empty #-}
-  empty :: Reversed a
-  empty = Empty
-
-  {-# INLINE (<|>) #-}
-  (<|>) :: Reversed a -> Reversed a -> Reversed a
-  (<|>) = (<>)
-
-instance MonadPlus Reversed
+  xs >>= f = foldMap1 f xs
 
 instance (Show a) => Show (Reversed a) where
   show :: Reversed a -> String

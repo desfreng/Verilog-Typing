@@ -122,15 +122,15 @@ expr :: { Expr }
   | unOpExpr                          { $1 }
   | binOpExpr                         { $1 }
   | expr '?' expr ':' expr            {% inExpr $ Conditional $1 $3 $5 }
-  | atomicExpr 'inside' exprRange     {% inExpr $ Inside $1 $3 }
+  | atomicExpr 'inside' exprRange     {% parseInside $1 $3 }
 
 atomicExpr :: { Expr }
   : ident                             {% parseOperand $1 }
   | int                               {% inExpr $ IntegerValue $1 }
   | '(' expr ')'                      { $2 }
   | '(' ident '::' expr ')'           {% declareTag $2 $4 }
-  | exprRange                         {% inExpr $ Concat $1 }
-  | '{' int exprRange '}'             {% inExpr $ ReplConcat (fromEnum $ value $2) $3 }
+  | exprRange                         {% parseConcat $1 }
+  | '{' int exprRange '}'             {% parseRepl $2 $3 }
   | '(' expr binOpAssign expr ')'     {% parseAssign $2 $3 $4 }
   | '(' expr shiftOpAssign expr ')'   {% parseShiftAssign $2 $3 $4 }
   | 'signed' '(' expr ')'             {% inExpr $ (Cast Signed) $3 }
@@ -202,8 +202,7 @@ shiftOpAssign
   | '<<<='                            { ArithLeft }
 
 exprRange
-  : '{' '}'                           { [] }
-  | '{' exprList '}'                  { toList $2 }
+  : '{' exprList '}'                  { $2 }
 
 exprList
   : expr                              { singleton $1 }
