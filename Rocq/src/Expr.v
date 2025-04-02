@@ -6,6 +6,9 @@ Import ListNotations.
 Set Implicit Arguments.
 
 Module Expr.
+
+  Unset Elimination Schemes.
+
   Inductive Expr : Type :=
   | EOperand (op: string)
   | EBinOp (lhs rhs: Expr)
@@ -18,22 +21,23 @@ Module Expr.
   | EAssign (op: string) (arg: Expr)
   | EShiftAssign (op: string) (arg: Expr)
   | ECond (cond tb fb: Expr)
-  | EUnaryConcat (arg: Expr)
-  | EBinaryConcat (lhs rhs: Expr)
+  | EConcat (args: list Expr)
   | ERepl (amount: nat) (arg: Expr)
   | EInside (arg: Expr) (range: list Expr)
   .
-  
-  Section Expr_ind_bis.
+
+  Set Elimination Schemes.
+
+  Section Expr_ind.
     Variable P : Expr -> Prop.
     Variable P0 : list Expr -> Prop.
-    
+
     Hypothesis HPOperand:
       forall o, P (EOperand o).
-    
+
     Hypothesis HPBinOp:
       forall lhs rhs, P lhs -> P rhs -> P (EBinOp lhs rhs).
-    
+
     Hypothesis HPUnOp:
       forall arg, P arg -> P (EUnOp arg).
 
@@ -61,11 +65,8 @@ Module Expr.
     Hypothesis HPCond:
       forall cond tb fb, P cond -> P tb -> P fb -> P (ECond cond tb fb).
 
-    Hypothesis HPUnConcat:
-      forall arg, P arg -> P (EUnaryConcat arg).
-
-    Hypothesis HPBinConcat:
-      forall lhs rhs, P lhs -> P rhs -> P (EBinaryConcat lhs rhs).
+    Hypothesis HPConcat:
+      forall args, P0 args -> P (EConcat args).
 
     Hypothesis HPRepl:
       forall n arg, P arg -> P (ERepl n arg).
@@ -78,40 +79,41 @@ Module Expr.
 
     Hypothesis HP0Cons:
       forall hd tl, P hd -> P0 tl -> P0 (hd :: tl).
-    
-    Fixpoint Expr_ind_bis e : P e.
+
+    Fixpoint Expr_ind e : P e.
     Proof.
       destruct e.
       - apply HPOperand.
-      - apply HPBinOp. apply Expr_ind_bis. apply Expr_ind_bis.
-      - apply HPUnOp. apply Expr_ind_bis.
-      - apply HPCast. apply Expr_ind_bis.
-      - apply HPComp. apply Expr_ind_bis. apply Expr_ind_bis.
-      - apply HPLogic. apply Expr_ind_bis. apply Expr_ind_bis.
-      - apply HPReduction. apply Expr_ind_bis.
-      - apply HPShift. apply Expr_ind_bis. apply Expr_ind_bis.
-      - apply HPAssign. apply Expr_ind_bis.
-      - apply HPShiftAssign. apply Expr_ind_bis.
-      - apply HPCond. apply Expr_ind_bis. apply Expr_ind_bis. apply Expr_ind_bis.
-      - apply HPUnConcat. apply Expr_ind_bis.
-      - apply HPBinConcat. apply Expr_ind_bis. apply Expr_ind_bis.
-      - apply HPRepl. apply Expr_ind_bis.
-      - apply HPInside. apply Expr_ind_bis. induction range.
+      - apply HPBinOp. apply Expr_ind. apply Expr_ind.
+      - apply HPUnOp. apply Expr_ind.
+      - apply HPCast. apply Expr_ind.
+      - apply HPComp. apply Expr_ind. apply Expr_ind.
+      - apply HPLogic. apply Expr_ind. apply Expr_ind.
+      - apply HPReduction. apply Expr_ind.
+      - apply HPShift. apply Expr_ind. apply Expr_ind.
+      - apply HPAssign. apply Expr_ind.
+      - apply HPShiftAssign. apply Expr_ind.
+      - apply HPCond. apply Expr_ind. apply Expr_ind. apply Expr_ind.
+      - apply HPConcat. induction args.
         + apply HP0Nil.
-        + apply HP0Cons. apply Expr_ind_bis. apply IHrange.
+        + apply HP0Cons. apply Expr_ind. apply IHargs.
+      - apply HPRepl. apply Expr_ind.
+      - apply HPInside. apply Expr_ind. induction range.
+        + apply HP0Nil.
+        + apply HP0Cons. apply Expr_ind. apply IHrange.
      Qed.
 
-   End Expr_ind_bis.
+   End Expr_ind.
 
 End Expr.
 
 
 Module Notation.
   Import Expr.
-  
+
   Declare Custom Entry expr.
   Declare Custom Entry expr_var.
-  
+
   Notation "a" := (ident_to_string! a) (in custom expr_var at level 0, a constr at level 0, only parsing).
   Notation "a" := (a) (in custom expr_var at level 0, a constr at level 0, format " a ", only printing).
 
@@ -129,9 +131,7 @@ Module Notation.
   Notation "x >> y" := (EShift x y) (in custom expr at level 60, left associativity).
   Notation "'set' x := y" := (EAssign x y) (in custom expr at level 95, x custom expr_var, y custom expr, no associativity).
   Notation "x ? y : z" := (ECond x y z) (in custom expr at level 90, right associativity).
-  Notation "{ x , y }" := (EBinaryConcat x y) (in custom expr at level 0, x custom expr, y custom expr).
-  Notation "{ x }" := (EUnaryConcat x) (in custom expr at level 0, x custom expr).
+  Notation "{ x , .. , y }" := (EConcat (cons x .. (cons y nil) ..)) (in custom expr at level 0, x custom expr, y custom expr).
   Notation "[ i | x ]" := (ERepl i x) (in custom expr at level 0, i constr, x custom expr).
 
 End Notation.
-

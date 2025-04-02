@@ -30,7 +30,7 @@ Ltac2 constr_string_of_var (c : constr) :=
   end.
 Ltac2 constr_string_of_lambda (c : constr) :=
   match kind c with
-  | Lambda b i =>
+  | Lambda b _ =>
       match Binder.name b with
       | Some n => constr_string_of_ident n
       | _ => Control.throw_invalid_argument "a Lambda with unnamed binder"
@@ -59,19 +59,3 @@ Import Strings.String.
 Local Open Scope string_scope.
 Local Set Default Proof Mode "Classic".
 Local Tactic Notation "pose_string" ident(x) := let s := constr_string_of_ident x in pose s.
-Goal forall my_var: nat, my_var = my_var.
-  pose_string mystring.
-  intros.
-  match goal with
-  | |- _ = ?x => constr_string_of_var_cps x ltac:(fun s => pose s)
-  end.
-  let f := constr:(fun my_binder : unit => tt) in
-  constr_string_of_lambda_cps f ltac:(fun s => pose s).
-  let f := constr:(fun my_binder : unit => tt) in
-  let s := constr_string_of_lambda f in
-  pose s.
-  let s := constr_string_of_var my_var in
-  pose s.
-  (*Time*) do 1000 (constr_string_of_var_cps my_var ltac:(fun s => pose s as X; clear X)). (* 0.25s *)
-Abort.
-
