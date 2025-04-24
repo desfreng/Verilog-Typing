@@ -1,7 +1,9 @@
-var x: 10
-var u: 1
+var x: 1
+var u: 2
 var y: 3
 var z: 4
-var tmp: 5
+var tmp: 8
 
-expr e: x + ({tmp, tmp} = x ? {3 {signed(& y), 1'd1 + z}} : u) / x == {4'b1001, 3'b11, 6'd43}
+# expr e: x + ({tmp, tmp} = x ? {3 {signed(& y), 1'd1 + z}} : u) / x == {4'b1001, 3'b11, 6'd43}
+# expr e: tmp + signed(x + u)
+expr tot: tmp = x == x

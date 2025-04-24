@@ -15,8 +15,6 @@ Module Path.
   | Rhs
   | Arg
   | Cond
-  | TrueB
-  | FalseB
   | Args (i: nat)
   .
 
@@ -38,8 +36,8 @@ Module Path.
   | P_AssignArg : forall op arg p, IsPath arg p -> IsPath (EAssign op arg) (Arg :: p)
   | P_ShiftAssignArg : forall op arg p, IsPath arg p -> IsPath (EShiftAssign op arg) (Arg :: p)
   | P_CondCond : forall cond tb fb p, IsPath cond p -> IsPath (ECond cond tb fb) (Cond :: p)
-  | P_CondTrue : forall cond tb fb p, IsPath tb p -> IsPath (ECond cond tb fb) (TrueB :: p)
-  | P_CondFalse : forall cond tb fb p, IsPath fb p -> IsPath (ECond cond tb fb) (FalseB :: p)
+  | P_CondTrue : forall cond tb fb p, IsPath tb p -> IsPath (ECond cond tb fb) (Lhs :: p)
+  | P_CondFalse : forall cond tb fb p, IsPath fb p -> IsPath (ECond cond tb fb) (Rhs :: p)
   | P_ConcatArgs : forall n args e p,
       nth_error args n = Some e -> IsPath e p -> IsPath (EConcat args) (Args n :: p)
   | P_ReplArg : forall i arg p, IsPath arg p -> IsPath (ERepl i arg) (Arg :: p)
@@ -49,19 +47,19 @@ Module Path.
   .
 
 
-  Lemma ispath_prefix: forall e p, IsPath e p -> forall l1 l2, l1 ++ l2 = p -> IsPath e l1.
+  Lemma IsPath_prefix: forall e l1 l2, IsPath e (l1 ++ l2) -> IsPath e l1.
   Proof.
-    intros e p H. induction H; intros; try (destruct l1;
-      [constructor | inversion H0; constructor; firstorder]).
-    - apply app_eq_nil in H. intuition (subst; constructor).
+    intros e l1 l2 H. remember (l1 ++ l2).
+    generalize dependent l2. generalize dependent l1. induction H; intros;
+      try (destruct l1; [constructor | inversion Heql; constructor; firstorder]).
     - destruct l1.
       + constructor.
-      + inversion H1. subst. clear H1. econstructor.
+      + inv Heql. econstructor.
         * apply H.
         * apply (IHIsPath l1 l2). reflexivity.
     - destruct l1.
       + constructor.
-      + inversion H1. subst. clear H1. econstructor.
+      + inv Heql. econstructor.
         * apply H.
         * apply (IHIsPath l1 l2). reflexivity.
   Qed.
@@ -84,7 +82,7 @@ Module Path.
 
   Fixpoint all_path e :=
     match e with
-    | EOperand _ => [[]]
+    | EAtom _ => [[]]
     | EBinOp lhs rhs => [] :: add_path Lhs (all_path lhs) ++ add_path Rhs (all_path rhs)
     | EUnOp arg => [] :: add_path Arg (all_path arg)
     | ECast arg => [] :: add_path Arg (all_path arg)
@@ -95,8 +93,8 @@ Module Path.
     | EAssign _ arg => [] :: add_path Arg (all_path arg)
     | EShiftAssign _ arg => [] :: add_path Arg (all_path arg)
     | ECond cond tb fb =>
-        [] :: add_path Cond (all_path cond) ++ add_path TrueB (all_path tb)
-          ++ add_path FalseB (all_path fb)
+        [] :: add_path Cond (all_path cond) ++ add_path Lhs (all_path tb)
+          ++ add_path Rhs (all_path fb)
     | EConcat args =>
         let lPath := mapI (fun i e => add_path (Args i) (all_path e)) args in
         [] :: concat lPath
@@ -106,6 +104,7 @@ Module Path.
         [] :: add_path Arg (all_path arg) ++ concat lPath
     end
   .
+
 
   Lemma all_path_valid : forall e p, In p (all_path e) <-> IsPath e p.
   Proof.
@@ -146,43 +145,38 @@ Module Path.
           eexists; intuition; firstorder
       end.
     intro e.
-    induction e using Expr_ind with
-      (P0 := fun r => forall n e, nth_error r n = Some e -> forall p, In p (all_path e) <-> IsPath e p);
+    induction e using Expr_ind;
       intros; try (split; intros; UnBinTriOp).
     - split; intros.
       + destruct H. subst. constructor. destruct H.
       + inversion H. left. reflexivity.
     - split; intros.
-      + destruct H; subst; try constructor.
-        rewrite in_concat in H. destruct H as [h [H1 H2]].
+      + destruct H0; subst; try constructor.
+        rewrite in_concat in H0. destruct H0 as [h [H1 H2]].
         rewrite mapI_values in H1. destruct H1 as [n [x [H1 H3]]].
         subst. rewrite add_path_okay in H2. destruct H2 as [p' [H2 H3]]. subst.
         econstructor. apply H1. firstorder.
-      + inversion H.
+      + inversion H0.
         * constructor. reflexivity.
-        * subst. right. rewrite in_concat. apply (IHe n e H1) in H2. eexists. split.
+        * subst. right. rewrite in_concat. apply (H n e H2) in H3. eexists. split.
           -- rewrite mapI_values. exists n. exists e. intuition.
           -- rewrite add_path_okay. exists p0. intuition.
     - split; intros.
-      + destruct H; subst; try constructor. rewrite in_app_iff in *. destruct H.
-        * rewrite add_path_okay in H. destruct H as [p' [H1 H2]].
+      + destruct H0; subst; try constructor. rewrite in_app_iff in *. destruct H0.
+        * rewrite add_path_okay in H0. destruct H0 as [p' [H1 H2]].
           subst. constructor. firstorder.
-        * rewrite in_concat in H. destruct H as [h [H1 H2]].
+        * rewrite in_concat in H0. destruct H0 as [h [H1 H2]].
           rewrite mapI_values in H1. destruct H1 as [n [x [H1 H3]]].
           subst. rewrite add_path_okay in H2. destruct H2 as [p' [H2 H3]]. subst.
           econstructor. apply H1. firstorder.
-      + inversion H.
+      + inversion H0.
         * constructor. reflexivity.
         * subst. simpl. right. rewrite in_app_iff. left. rewrite add_path_okay.
           exists p0. intuition. firstorder.
         * subst. simpl. right. rewrite in_app_iff. right. rewrite in_concat.
-          apply (IHe0 n e0 H2) in H4. eexists. split.
+          apply (H n e0 H3) in H5. eexists. split.
           -- rewrite mapI_values. exists n. exists e0. intuition.
           -- rewrite add_path_okay. exists p0. intuition.
-    - destruct n; discriminate H.
-    - destruct n.
-      + inversion H. subst. apply IHe.
-      + simpl in H. firstorder.
   Qed.
 
 
@@ -203,8 +197,8 @@ Module Path.
     | EAssign _ arg, Arg :: p => sub_expr arg p
     | EShiftAssign _ arg, Arg :: p => sub_expr arg p
     | ECond cond _ _, Cond :: p => sub_expr cond p
-    | ECond _ tb _, TrueB :: p => sub_expr tb p
-    | ECond _ _ fb, FalseB :: p => sub_expr fb p
+    | ECond _ tb _, Lhs :: p => sub_expr tb p
+    | ECond _ _ fb, Rhs :: p => sub_expr fb p
     | EConcat args, Args i :: p =>
         match nth_error args i with
         | Some e => sub_expr e p
@@ -229,23 +223,24 @@ Module Path.
 
   Lemma sub_expr_valid: forall e p f, sub_expr e p = Some f -> IsPath e p.
   Proof.
-    induction e using Expr_ind with
-      (P0 := fun r => forall n e, nth_error r n = Some e ->
-                          forall p f, sub_expr e p = Some f -> IsPath e p);
-        intros; try (destruct p as [|[]]; try (discriminate H); constructor; firstorder).
-      - destruct p as [|[]]; try (discriminate H).
+    induction e using Expr_ind; intros;
+      try (destruct p as [|[]]; try (discriminate H); constructor; firstorder).
+      - destruct p as [|[]]; try (discriminate H); try (discriminate H0).
         + constructor.
-        + simpl in H. destruct (nth_error args i) eqn:H1; try (discriminate H).
-          econstructor. apply H1. apply (IHe _ _ H1 _ _ H).
-      - destruct p as [|[]]; try (discriminate H).
+        + simpl in H0. destruct (nth_error args i) eqn:H1; try (discriminate H0).
+          econstructor. apply H1. apply (H _ _ H1 _ _ H0).
+      - destruct p as [|[]]; try (discriminate H0).
         + constructor.
         + constructor. firstorder.
-        + simpl in H. destruct (nth_error range i) eqn:H1; try (discriminate H).
-          econstructor. apply H1.  apply (IHe0 _ _ H1 _ _ H).
-      - destruct n; discriminate H.
-      - destruct n.
-        + inversion H. subst. apply (IHe _ _ H0).
-        + apply (IHe0 _ _ H _ _ H0).
+        + simpl in H0. destruct (nth_error args i) eqn:H1; try (discriminate H0).
+          econstructor. apply H1. apply (H _ _ H1 _ _ H0).
+  Qed.
+
+  Lemma IsPath_sub_expr_iff: forall e p, IsPath e p <-> exists e0, sub_expr e p = Some e0.
+  Proof.
+    split.
+    - apply IsPath_is_sub_expr.
+    - intros [? H]. apply (sub_expr_valid _ _ H).
   Qed.
 
   Lemma sub_exp_nil: forall e, sub_expr e [] = Some e.
@@ -269,33 +264,15 @@ Module Path.
         discriminate H || (apply IHp in H; simpl; rewrite H'; assumption)).
   Qed.
 
-  Lemma IsPath_chunk : forall e c,
-      IsPath e c <-> exists p f l, sub_expr e p = Some f /\ IsPath f l /\ c = p ++ l.
+  Lemma IsPath_chunk : forall e p c,
+      IsPath e (p ++ c) <-> (exists f, sub_expr e p = Some f /\ IsPath f c).
   Proof.
-    Ltac _is_path_chunk_tac :=
-      match goal with
-      | [ H: _ |- context[_ = Some ?x] ] => destruct x; reflexivity
-      | [ H: _ = Some ?x |- context[_ = Some ?x] ] =>
-          simpl; rewrite H; destruct x; reflexivity
-      | [ C: _ = ?p ++ [], Q: sub_expr _ _ = Some ?e |- IsPath _ _] =>
-          rewrite app_nil_r in C; subst; apply sub_expr_valid with (f := e); assumption
-      | [ C: _ = ?p ++ ?a :: _, H: forall _, _ = _ -> _ = _ -> _,
-            Q: sub_expr _ _ = Some _ |- IsPath _ _] =>
-          apply (H (p ++ [a]));
-          [ apply sub_exp_chunk; eexists; split; [apply Q | _is_path_chunk_tac]
-          | subst; rewrite <- app_assoc; reflexivity]
-      end
-    .
     split; intros.
-    - assert (H1: exists f, sub_expr e c = Some f). apply IsPath_is_sub_expr. assumption.
-      destruct H1 as [f H1]. exists c. exists f. exists []. repeat split. assumption. constructor.
-      symmetry. apply app_nil_r.
-    - destruct H as [p [f [l [H1 [H2 H3]]]]].
-      generalize dependent p. induction H2; intros; _is_path_chunk_tac.
+    - destruct (IsPath_is_sub_expr H) as [g H1]. apply sub_exp_chunk in H1.
+      destruct H1 as [f [H2 H3]]. exists f. split. assumption. apply IsPath_sub_expr_iff.
+      exists g. assumption.
+    - destruct H as [f [H1 H2]]. apply IsPath_sub_expr_iff.
+      apply IsPath_sub_expr_iff in H2. destruct H2 as [g H2]. exists g.
+      apply sub_exp_chunk. exists f. intuition.
   Qed.
-
-  Lemma IsPath_suffix: forall e e0 p c l,
-    IsPath e c -> c = p ++ l -> sub_expr e p = Some e0 -> IsPath e0 l.
-  Proof.
-  Admitted.
 End Path.

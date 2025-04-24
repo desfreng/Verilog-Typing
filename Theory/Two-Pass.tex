@@ -1,0 +1,231 @@
+\documentclass{article}
+\usepackage[a4paper, margin=1cm]{geometry}
+\usepackage[english]{babel}
+\usepackage[mono=false]{libertine}
+
+\usepackage{hyperref}
+\usepackage{csquotes}
+\usepackage{ascii}
+\usepackage{enumitem}
+
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{mathtools}
+
+\usepackage{ebproof}
+
+\newcommand{\mytilde}{\raisebox{-.7ex}{\asciitilde{}}}
+
+\renewcommand{\epsilon}{\varepsilon}
+
+\newcommand{\binOp}{\ensuremath{\left\{
+      \texttt{+}, \texttt{-}, \texttt{*}, \texttt{/}, \texttt{\%}, \texttt{\&},
+      \texttt{|}, \texttt{\^{}}, \texttt{\^{}}\mytilde, \mytilde\texttt{\^{}}
+      \right\}}}
+\newcommand{\unOp}{\ensuremath{\left\{
+      \texttt{+}, \texttt{-}, \texttt{++}, \texttt{--}, \mytilde
+    \right\}}}
+\newcommand{\cast}{\ensuremath{\left\{\texttt{\$signed}, \texttt{\$unsigned}\right\}}}
+\newcommand{\comp}{\ensuremath{\left\{
+      \texttt{===}, \texttt{!==}, \texttt{==?}, \texttt{!=?}, \texttt{==},
+      \texttt{!=}, \texttt{>}, \texttt{>=}, \texttt{<}, \texttt{<=}
+    \right\}}}
+\newcommand{\logic}{\ensuremath{\left\{\texttt{\&\&}, \texttt{||}, \texttt{->}, \texttt{<->}\right\}}}
+\newcommand{\red}{\ensuremath{\left\{
+      \texttt{\&}, \mytilde\texttt{\&}, \texttt{|}, \mytilde\texttt{|}, \texttt{\^{}},
+      \mytilde\texttt{\^{}}, \texttt{\^{}}\mytilde, \texttt{!}
+    \right\}}}
+\newcommand{\shift}{\ensuremath{\left\{
+      \texttt{>>}, \texttt{<}\texttt{<}, \texttt{**}, \texttt{>>>},
+      \texttt{<}\texttt{<}\texttt{<}
+    \right\}}}
+\newcommand{\assignBinOp}{\ensuremath{\left\{
+      \texttt{=}, \texttt{+=}, \texttt{-=}, \texttt{*=}, \texttt{/=},
+      \texttt{\%=}, \texttt{\&=}, \texttt{|=}, \texttt{\^{}=}
+    \right\}}}
+\newcommand{\assignShift}{\ensuremath{\left\{
+      \texttt{<}\texttt{<=}, \texttt{>>=},
+      \texttt{<}\texttt{<}\texttt{<=}, \texttt{>>>=}
+    \right\}}}
+
+\newcommand{\type}[3]{\vdash#2:#1[#3]}
+
+\newcommand{\vDown}{\vdash\downarrow}
+
+
+\pagestyle{empty}
+
+\begin{document}
+
+\section*{Two Pass Typing Rules}
+
+\subsection*{Rules}
+% The statement $\Pi \ e : c$ means:
+% \begin{center}
+%     In the context environment $\Pi$, all the information needed to compute the size of the expression $e$ is in the context-set identified by $c$ in $\Pi$.
+% \end{center}
+
+
+We use the following notations:
+\begin{itemize}
+    \item $\Gamma$ compute the size of an atom.
+    \item $\Phi$ compute the size of a lvalue.
+\end{itemize}
+
+
+\subsubsection*{Base cases}
+
+\begin{equation*}
+    \begin{prooftree}
+        \hypo{s = \Gamma(e)}
+        \hypo{e \in \mathcal{A}}
+        \infer2{\type{n}{e}{s}}
+    \end{prooftree}
+\end{equation*}
+
+\subsubsection*{Operators}
+
+\begin{itemize}[leftmargin=*]
+    \setlength{\itemsep}{2em}
+
+    \item $\oplus \in \binOp$:
+
+          \begin{equation*}
+              \begin{prooftree}
+                  \hypo{\type{n}{a}{s_a}}
+                  \hypo{\type{n}{b}{s_b}}
+                  \hypo{s = \max\{s_a, s_b\}}
+                  \infer3{\type{n}{a \oplus b}{s}}
+              \end{prooftree}
+          \end{equation*}
+
+    \item $\oplus \in \unOp$:
+
+          \begin{equation*}
+              \begin{prooftree}
+                  \hypo{\type{n}{e}{s}}
+                  \infer1{\type{n}{\oplus e}{s}}
+              \end{prooftree}
+          \end{equation*}
+
+    \item $\oplus \in \cast$:
+
+          \begin{equation*}
+              \begin{prooftree}
+                  \hypo{\type{s}{e}{s}}
+                  \infer1{\type{n}{\oplus(e)}{s}}
+              \end{prooftree}
+          \end{equation*}
+
+    \item $\oplus \in \comp$:
+
+          \begin{equation*}
+              \begin{prooftree}
+                  \hypo{\type{s}{a}{s_a}}
+                  \hypo{\type{s}{b}{s_b}}
+                  \hypo{s = \max\{s_a, s_b\}}
+                  \infer3{\type{n}{a \oplus b}{1}}
+              \end{prooftree}
+          \end{equation*}
+
+    \item $\oplus \in \logic$:
+
+          \begin{equation*}
+              \begin{prooftree}
+                  \hypo{\type{s_a}{a}{s_a}}
+                  \hypo{\type{s_b}{b}{s_b}}
+                  \infer2{\type{n}{a \oplus b}{1}}
+              \end{prooftree}
+          \end{equation*}
+
+    \item $\oplus \in \red$:
+
+          \begin{equation*}
+              \begin{prooftree}
+                  \hypo{\type{s}{e}{s}}
+                  \infer1{\type{n}{\oplus e}{1}}
+              \end{prooftree}
+          \end{equation*}
+
+    \item $\oplus \in \shift$:
+
+          \begin{equation*}
+              \begin{prooftree}
+                  \hypo{\type{n}{a}{s}}
+                  \hypo{\type{s_b}{b}{s_b}}
+                  \infer2{\type{n}{a \oplus b}{s}}
+              \end{prooftree}
+          \end{equation*}
+
+    \item $\oplus \in \assignBinOp$:
+
+          \begin{equation*}
+              \begin{prooftree}
+                  \hypo{s = \Phi(l)}
+                  \hypo{\type{n_e}{e}{s_e}}
+                  \hypo{n_e = \max\{s_a, s\}}
+                  \infer3{\type{n}{l \oplus e}{s}}
+              \end{prooftree}
+          \end{equation*}
+
+    \item $\oplus \in \assignShift$:
+
+          \begin{equation*}
+              \begin{prooftree}
+                  \hypo{s = \Phi(l)}
+                  \hypo{\type{s_e}{e}{s_e}}
+                  \infer2{\type{n}{l \oplus e}{s}}
+              \end{prooftree}
+          \end{equation*}
+
+    \item If expression:
+
+          \begin{equation*}
+              \begin{prooftree}
+                  \hypo{\type{s_e}{e}{s_e}}
+                  \hypo{\type{n}{a}{s_a}}
+                  \hypo{\type{n}{b}{s_b}}
+                  \hypo{s = \max\{s_a, s_b\}}
+                  \infer4{\type{n}{e \texttt{?} a \texttt{:} b}{s}}
+              \end{prooftree}
+          \end{equation*}
+
+    \item Concatenation:
+
+          \begin{equation*}
+              \begin{prooftree}
+                  \hypo{\type{s_1}{e_1}{s_1}}
+                  \hypo{\dots}
+                  \hypo{\type{s_k}{e_k}{s_k}}
+                  \hypo{s = \sum_{i=1}^{k} s_i}
+                  \infer4{\type{n}{\texttt{\{}e_1, \texttt{\dots}, e_k \texttt{\}}}{s}}
+              \end{prooftree}
+          \end{equation*}
+
+    \item Replication:
+
+          \begin{equation*}
+              \begin{prooftree}
+                  \hypo{i \in \mathbb{N}}
+                  \hypo{\type{s_e}{e}{s_e}}
+                  \hypo{s = i \times s_e}
+                  \infer3{\type{n}{\texttt{\{}i~e\texttt{\}}}{s}}
+              \end{prooftree}
+          \end{equation*}
+
+    \item Inside:
+
+          \begin{equation*}
+              \begin{prooftree}
+                  \hypo{\type{s}{a}{s_a}}
+                  \hypo{\type{s}{e_1}{s_1}}
+                  \hypo{\dots}
+                  \hypo{\type{s}{e_k}{s_k}}
+                  \hypo{s = \max\{s_a, s_1, \dots, s_k\}}
+                  \infer5{\type{n}{a~\texttt{inside}~\texttt{\{}e_1, \texttt{\dots}, e_k \texttt{\}}}{1}}
+              \end{prooftree}
+          \end{equation*}
+\end{itemize}
+
+\end{document}

@@ -16,7 +16,7 @@ Definition push {X: Type} l (x: X) := l ++ [x].
 
 Fixpoint e_ctx (e: Expr) (p: path) : list path :=
   match e with
-  | EOperand _ => []
+  | EAtom _ => []
   | EBinOp lhs rhs => e_ctx lhs (push p Lhs) ++ e_ctx rhs (push p Rhs)
   | EUnOp arg => e_ctx arg (push p Arg)
   | ECast arg => let p' := push p Arg in p' :: e_ctx arg p'
@@ -33,8 +33,8 @@ Fixpoint e_ctx (e: Expr) (p: path) : list path :=
   | EShiftAssign _ arg => let p' := push p Arg in p' :: e_ctx arg p'
   | ECond cond tb fb =>
       let condP := push p Cond in
-      condP :: e_ctx cond condP ++ e_ctx tb (push p TrueB)
-        ++ e_ctx fb (push p FalseB)
+      condP :: e_ctx cond condP ++ e_ctx tb (push p Lhs)
+        ++ e_ctx fb (push p Rhs)
   | EConcat args =>
       concat (mapI (fun i e => let newP := push p (Args i) in newP :: e_ctx e newP) args)
   | ERepl _ arg => let p' := push p Arg in p' :: e_ctx arg p'
@@ -56,27 +56,20 @@ Proof.
         apply IHe in H; _e_ctx_comp_tac
     | [ H : In _ (_ :: e_ctx _ _) |- _ ] =>
         apply in_inv in H; destruct H; subst; _e_ctx_comp_tac
-    | [ IHe: _, H: In _ (concat _) |- _ ] =>
-        apply in_concat in H; destruct H as [x [H H2]]; apply mapI_values in H;
-        destruct H as [n [x0 [H1 H3]]]; subst; apply in_inv in H2; destruct H2; subst;
+    | [ H: _, Hi: In _ (concat _) |- _ ] =>
+        apply in_concat in Hi; destruct Hi as [x [Ht H2]]; apply mapI_values in Ht;
+        destruct Ht as [n [x0 [H1 H3]]]; subst; apply in_inv in H2; destruct H2; subst;
         [ exists [Args n]; split; [reflexivity | econstructor; [apply H1 | constructor]]
-        | destruct (IHe _ _ _ _ H1 H) as [? [H2 H3]]; subst; eexists; split;
+        | destruct (H _ _ H1 _ _ Hi) as [? [H2 H3]]; subst; eexists; split;
           [rewrite <- app_assoc; reflexivity | econstructor; [apply H1 | assumption]]]
     | [ _ : _ |- ex (fun _ => _ ++ [?x] = _ /\ _) ] =>
         exists [x]; split; [reflexivity | constructor; constructor]
     end
   .
-  induction e using Expr_ind with
-    (P0 := fun args => forall n e p c, nth_error args n = Some e -> In c (e_ctx e p)
-                               -> exists l, c = p ++ l /\ IsPath e l);
-    intros; simpl in *; unfold push in *;
+  induction e using Expr_ind; intros; simpl in *; unfold push in *;
     repeat (rewrite in_app_iff in *; destruct H as [H|H]); intuition; subst;
     try _e_ctx_comp_tac.
   - exists []. rewrite app_nil_r. split. reflexivity. constructor.
-  - destruct n; discriminate H.
-  - destruct n; simpl in *.
-    + inv H. apply (IHe _ _ H0).
-    + apply (IHe0 _ _ _ _ H H0).
 Qed.
 
 
@@ -98,9 +91,7 @@ Proof.
     | [ H: ?x ++ _ = ?x ++ _ |- _ ] => apply app_inv_head in H; subst; intuition
     end
   .
-  induction e using Expr_ind with
-    (P0 := fun args => forall n e p c, nth_error args n = Some e ->
-                               In (p ++ c) (e_ctx e p) <-> In c (e_ctx e []));
+  induction e using Expr_ind;
     intros; simpl in *; unfold push in *; repeat (rewrite in_app_iff); simpl in *;
     split; intros H0; intuition; try _e_ctx_pre_tac; subst; auto.
   - left. apply (app_inv_head p). rewrite app_nil_r. assumption.
@@ -125,10 +116,6 @@ Proof.
       rewrite mapI_values; split; try (exists n; exists f; split; [apply H1 | reflexivity]).
     + subst. left. reflexivity.
     + right. _e_ctx_pre_tac. apply H1. apply H1.
-  - destruct n; discriminate H.
-  - destruct n; discriminate H.
-  - destruct n. inv H. firstorder. simpl in H. eapply (IHe0 _ _ _ _ H). apply H0.
-  - destruct n. inv H. firstorder. simpl in H. eapply (IHe0 _ _ _ _ H). apply H0.
 Qed.
 
 Lemma e_ctx_is_path: forall e e0 p c,
@@ -136,9 +123,8 @@ Lemma e_ctx_is_path: forall e e0 p c,
 Proof.
   intros e e0 p c H1 H2.
   assert (H3: exists l, c = p ++ l /\ IsPath e0 l). apply (e_ctx_comp _ _ _ H2).
-  destruct H3 as [l [H3 H4]].
-  apply IsPath_chunk. exists p. exists e0. exists l. intuition.
-Search IsPath.
+  destruct H3 as [l [H3 H4]]. subst.
+  apply IsPath_chunk. exists e0. intuition.
 Qed.
 
 
