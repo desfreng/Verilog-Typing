@@ -25,7 +25,6 @@ Module Expr.
   | ECond (cond tb fb: Expr)
   | EConcat (args: list Expr)
   | ERepl (amount: nat) (arg: Expr)
-  | EInside (arg: Expr) (args: list Expr)
   .
 
   Set Elimination Schemes.
@@ -73,9 +72,6 @@ Module Expr.
     Hypothesis HPRepl:
       forall n arg, P arg -> P (ERepl n arg).
 
-    Hypothesis HPInside:
-      forall arg args, P arg -> P0 args -> P (EInside arg args).
-
     Hypothesis HP0Nil:
       P0 [].
 
@@ -100,9 +96,6 @@ Module Expr.
         + apply HP0Nil.
         + apply HP0Cons. firstorder. firstorder.
       - apply HPRepl. firstorder.
-      - apply HPInside. firstorder. induction args.
-        + apply HP0Nil.
-        + apply HP0Cons. firstorder. firstorder.
     Qed.
   End Expr_ind_gen.
 
@@ -148,15 +141,10 @@ Module Expr.
     Hypothesis HPRepl:
       forall n arg, P arg -> P (ERepl n arg).
 
-    Hypothesis HPInside:
-      forall arg args, P arg -> (forall n e, nth_error args n = Some e -> P e) ->
-                  P (EInside arg args).
-
     Definition Expr_ind e : P e.
     Proof.
       induction e using Expr_ind_gen with
         (P0 := fun args => forall n e, nth_error args n = Some e -> P e).
-      - firstorder.
       - firstorder.
       - firstorder.
       - firstorder.

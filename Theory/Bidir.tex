@@ -299,32 +299,6 @@ We use the following notations:
                   \infer3[Repl\S]{\s{\texttt{\{}i~e\texttt{\}}}{t}}
               \end{prooftree}
           \end{equation*}
-
-
-    \item Inside:
-
-          \begin{gather*}
-              \begin{prooftree}
-                  \hypo{\s{a}{t}}
-                  \hypo{\c{e_1}{t}}
-                  \hypo{\dots}
-                  \hypo{\c{e_k}{t}}
-                  \infer4[LInside\S]{\s{a~\texttt{inside}~\texttt{\{}e_1, \texttt{\dots}, e_k \texttt{\}}}{1}}
-              \end{prooftree}
-              \\[1em]
-              \begin{prooftree}
-                  \hypo{i \in \{1, \dots, k\}}
-                  \hypo{\c{a}{t}}
-                  \hypo{\c{e_1}{t}}
-                  \hypo{\dots}
-                  \hypo{\c{e_{i-1}}{t}}
-                  \hypo{\s{e_i}{t}}
-                  \hypo{\c{e_{i+1}}{t}}
-                  \hypo{\dots}
-                  \hypo{\c{e_k}{t}}
-                  \infer9[RInside\S]{\s{a~\texttt{inside}~\texttt{\{}e_1, \texttt{\dots}, e_k \texttt{\}}}{1}}
-              \end{prooftree}
-          \end{gather*}
 \end{itemize}
 
 \end{document}

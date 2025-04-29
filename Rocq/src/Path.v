@@ -41,9 +41,6 @@ Module Path.
   | P_ConcatArgs : forall n args e p,
       nth_error args n = Some e -> IsPath e p -> IsPath (EConcat args) (Args n :: p)
   | P_ReplArg : forall i arg p, IsPath arg p -> IsPath (ERepl i arg) (Arg :: p)
-  | P_InsideArg : forall arg eList p, IsPath arg p -> IsPath (EInside arg eList) (Arg :: p)
-  | P_InsideRange : forall n arg eList e p,
-      nth_error eList n = Some e -> IsPath e p -> IsPath (EInside arg eList) (Args n :: p)
   .
 
 
@@ -52,11 +49,6 @@ Module Path.
     intros e l1 l2 H. remember (l1 ++ l2).
     generalize dependent l2. generalize dependent l1. induction H; intros;
       try (destruct l1; [constructor | inversion Heql; constructor; firstorder]).
-    - destruct l1.
-      + constructor.
-      + inv Heql. econstructor.
-        * apply H.
-        * apply (IHIsPath l1 l2). reflexivity.
     - destruct l1.
       + constructor.
       + inv Heql. econstructor.
@@ -99,9 +91,6 @@ Module Path.
         let lPath := mapI (fun i e => add_path (Args i) (all_path e)) args in
         [] :: concat lPath
     | ERepl _ arg => [] :: add_path Arg (all_path arg)
-    | EInside arg l =>
-        let lPath := mapI (fun i e => add_path (Args i) (all_path e)) l in
-        [] :: add_path Arg (all_path arg) ++ concat lPath
     end
   .
 
@@ -161,22 +150,6 @@ Module Path.
         * subst. right. rewrite in_concat. apply (H n e H2) in H3. eexists. split.
           -- rewrite mapI_values. exists n. exists e. intuition.
           -- rewrite add_path_okay. exists p0. intuition.
-    - split; intros.
-      + destruct H0; subst; try constructor. rewrite in_app_iff in *. destruct H0.
-        * rewrite add_path_okay in H0. destruct H0 as [p' [H1 H2]].
-          subst. constructor. firstorder.
-        * rewrite in_concat in H0. destruct H0 as [h [H1 H2]].
-          rewrite mapI_values in H1. destruct H1 as [n [x [H1 H3]]].
-          subst. rewrite add_path_okay in H2. destruct H2 as [p' [H2 H3]]. subst.
-          econstructor. apply H1. firstorder.
-      + inversion H0.
-        * constructor. reflexivity.
-        * subst. simpl. right. rewrite in_app_iff. left. rewrite add_path_okay.
-          exists p0. intuition. firstorder.
-        * subst. simpl. right. rewrite in_app_iff. right. rewrite in_concat.
-          apply (H n e0 H3) in H5. eexists. split.
-          -- rewrite mapI_values. exists n. exists e0. intuition.
-          -- rewrite add_path_okay. exists p0. intuition.
   Qed.
 
 
@@ -205,23 +178,19 @@ Module Path.
         | None => None
         end
     | ERepl _ arg, Arg :: p => sub_expr arg p
-    | EInside arg _, Arg :: p => sub_expr arg p
-    | EInside _ args, Args i :: p =>
-        match nth_error args i with
-        | Some e => sub_expr e p
-        | None => None
-        end
     | _, _ :: _ => None
     end
   .
 
-  Lemma IsPath_is_sub_expr: forall e p, IsPath e p -> exists e0, sub_expr e p = Some e0.
+  Notation "e @[ p ]" := (sub_expr e p) (at level 20).
+
+  Lemma IsPath_is_sub_expr: forall e p, IsPath e p -> exists e0, e @[p] = Some e0.
   Proof.
     intros. induction H; try (destruct IHIsPath as [x H1]; exists x);
       try (simpl; rewrite H); try (assumption). exists e. destruct e; reflexivity.
   Qed.
 
-  Lemma sub_expr_valid: forall e p f, sub_expr e p = Some f -> IsPath e p.
+  Lemma sub_expr_valid: forall e p f, e @[p] = Some f -> IsPath e p.
   Proof.
     induction e using Expr_ind; intros;
       try (destruct p as [|[]]; try (discriminate H); constructor; firstorder).
@@ -229,28 +198,22 @@ Module Path.
         + constructor.
         + simpl in H0. destruct (nth_error args i) eqn:H1; try (discriminate H0).
           econstructor. apply H1. apply (H _ _ H1 _ _ H0).
-      - destruct p as [|[]]; try (discriminate H0).
-        + constructor.
-        + constructor. firstorder.
-        + simpl in H0. destruct (nth_error args i) eqn:H1; try (discriminate H0).
-          econstructor. apply H1. apply (H _ _ H1 _ _ H0).
   Qed.
 
-  Lemma IsPath_sub_expr_iff: forall e p, IsPath e p <-> exists e0, sub_expr e p = Some e0.
+  Lemma IsPath_sub_expr_iff: forall e p, IsPath e p <-> exists e0, e @[p] = Some e0.
   Proof.
     split.
     - apply IsPath_is_sub_expr.
     - intros [? H]. apply (sub_expr_valid _ _ H).
   Qed.
 
-  Lemma sub_exp_nil: forall e, sub_expr e [] = Some e.
+  Lemma sub_exp_nil: forall e, e @[[]] = Some e.
   Proof.
     intros. destruct e; reflexivity.
   Qed.
 
   Lemma sub_exp_chunk : forall p q e g,
-      (exists f, sub_expr e p = Some f /\ sub_expr f q = Some g)
-      <-> sub_expr e (p ++ q) = Some g.
+      (exists f, e @[p] = Some f /\ f @[q] = Some g) <-> e @[p ++ q] = Some g.
   Proof.
     induction p; split; intros.
     - destruct H as [f [H1 H2]]. rewrite sub_exp_nil in H1. inv H1. assumption.
@@ -265,7 +228,7 @@ Module Path.
   Qed.
 
   Lemma IsPath_chunk : forall e p c,
-      IsPath e (p ++ c) <-> (exists f, sub_expr e p = Some f /\ IsPath f c).
+      IsPath e (p ++ c) <-> (exists f, e @[p] = Some f /\ IsPath f c).
   Proof.
     split; intros.
     - destruct (IsPath_is_sub_expr H) as [g H1]. apply sub_exp_chunk in H1.
@@ -275,4 +238,5 @@ Module Path.
       apply IsPath_sub_expr_iff in H2. destruct H2 as [g H2]. exists g.
       apply sub_exp_chunk. exists f. intuition.
   Qed.
+
 End Path.

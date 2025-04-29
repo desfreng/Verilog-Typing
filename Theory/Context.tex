@@ -278,22 +278,6 @@ We use the following notations:
                   \infer5{\Pi \vdash \texttt{\{}i~e\texttt{\}}: c}
               \end{prooftree}
           \end{equation*}
-
-
-    \item Inside:
-
-          \begin{equation*}
-              \begin{prooftree}
-                  \hypo{\Pi' \vdash a: c'}
-                  \hypo{\Pi' \vdash e_1: c'}
-                  \hypo{\dots}
-                  \hypo{\Pi' \vdash e_k: c'}
-                  \hypo{c \notin \dom \Pi'}
-                  \hypo{\Pi = \Pi' \sqcup \left\{c \mapsto q\right\}}
-                  \hypo{\Size 1 \in q}
-                  \infer7{\Pi \vdash a~\texttt{inside}~\texttt{\{}e_1, \texttt{\dots}, e_k \texttt{\}}: c}
-              \end{prooftree}
-          \end{equation*}
 \end{itemize}
 
 \end{document}

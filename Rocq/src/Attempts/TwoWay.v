@@ -24,13 +24,6 @@ Module TwoWay.
     end
   .
 
-  Fixpoint inside_max (s: nat) (l: list nat) :=
-    match l with
-    | [] => s
-    | hd :: tl => max hd (inside_max s tl)
-    end
-  .
-
   Inductive type : nat -> Expr -> nat -> Prop :=
   | TAtom : forall n s,
       type n (EAtom s) s
@@ -58,23 +51,15 @@ Module TwoWay.
       type_concat args sargs -> s = sum sargs -> type n (EConcat args) s
   | TRepl : forall n amount e se s ,
       type se e se -> s = se * amount -> type n (ERepl amount e) s
-  | TInside : forall n e args se sargs s,
-      type s e se -> type_inside s args sargs -> s = inside_max s sargs -> type n (EInside e args) 1
 
   with type_concat : list Expr -> list nat -> Prop :=
   | TConcatNil : type_concat [] []
   | TConcatCons : forall e el s sl,
       type s e s -> type_concat el sl -> type_concat (e :: el) (s :: sl)
-
-  with type_inside : nat -> list Expr -> list nat -> Prop :=
-  | TInsideNil : forall n, type_inside n [] []
-  | TInsideCons : forall n e el s sl,
-      type n e s -> type_inside n el sl -> type_inside n (e :: el) (s :: sl)
   .
 
   Scheme type_rec := Induction for type Sort Prop
-      with type_concat_rec := Induction for type_concat Sort Prop
-      with type_inside_rec := Induction for type_inside Sort Prop.
+      with type_concat_rec := Induction for type_concat Sort Prop.
 
   Definition ExprHasType e n := type n e n.
 

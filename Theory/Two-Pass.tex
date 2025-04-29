@@ -213,19 +213,6 @@ We use the following notations:
                   \infer3{\type{n}{\texttt{\{}i~e\texttt{\}}}{s}}
               \end{prooftree}
           \end{equation*}
-
-    \item Inside:
-
-          \begin{equation*}
-              \begin{prooftree}
-                  \hypo{\type{s}{a}{s_a}}
-                  \hypo{\type{s}{e_1}{s_1}}
-                  \hypo{\dots}
-                  \hypo{\type{s}{e_k}{s_k}}
-                  \hypo{s = \max\{s_a, s_1, \dots, s_k\}}
-                  \infer5{\type{n}{a~\texttt{inside}~\texttt{\{}e_1, \texttt{\dots}, e_k \texttt{\}}}{1}}
-              \end{prooftree}
-          \end{equation*}
 \end{itemize}
 
 \end{document}

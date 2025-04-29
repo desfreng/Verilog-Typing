@@ -38,8 +38,6 @@ Fixpoint e_ctx (e: Expr) (p: path) : list path :=
   | EConcat args =>
       concat (mapI (fun i e => let newP := push p (Args i) in newP :: e_ctx e newP) args)
   | ERepl _ arg => let p' := push p Arg in p' :: e_ctx arg p'
-  | EInside arg args =>
-      concat (mapI (fun i e => let newP := push p (Args i) in newP :: e_ctx e newP) args)
   end
 .
 
@@ -104,16 +102,6 @@ Proof.
   - rewrite in_concat in *. destruct H0 as [x [H1 H2]]. rewrite mapI_values in H1.
     destruct H1 as [n [e [H1 H3]]]. subst. simpl in H2. destruct H2; eexists;
       rewrite mapI_values; split; try (exists n; exists e; split; [apply H1 | reflexivity]).
-    + subst. left. reflexivity.
-    + right. _e_ctx_pre_tac. apply H1. apply H1.
-  - rewrite in_concat in *. destruct H0 as [x [H1 H2]]. rewrite mapI_values in H1.
-    destruct H1 as [n [f [H1 H3]]]. subst. simpl in H2. destruct H2; eexists;
-      rewrite mapI_values; split; try (exists n; exists f; split; [apply H1 | reflexivity]).
-    + left. apply (app_inv_head p). assumption.
-    + right. _e_ctx_pre_tac. apply H1. apply H1.
-  - rewrite in_concat in *. destruct H0 as [x [H1 H2]]. rewrite mapI_values in H1.
-    destruct H1 as [n [f [H1 H3]]]. subst. simpl in H2. destruct H2; eexists;
-      rewrite mapI_values; split; try (exists n; exists f; split; [apply H1 | reflexivity]).
     + subst. left. reflexivity.
     + right. _e_ctx_pre_tac. apply H1. apply H1.
 Qed.

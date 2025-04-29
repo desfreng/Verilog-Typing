@@ -1,4 +1,3 @@
-From Stdlib Require Import Strings.String.
 From Stdlib Require Import Lists.List.
 From Stdlib Require Import PeanoNat.
 From Stdlib Require Import Arith.Compare_dec.
@@ -28,14 +27,6 @@ Module BiDir.
   | ResShiftAssign : forall lval arg, Resizable (EShiftAssign lval arg)
   | ResConcat : forall args, Resizable (EConcat args)
   | ResRepl : forall amount arg, Resizable (ERepl amount arg)
-  | ResInside : forall arg args, Resizable (EInside arg args)
-  .
-
-  Fixpoint sum (l: list nat) :=
-    match l with
-    | [] => 0
-    | hd :: tl => hd + sum tl
-    end
   .
 
   Reserved Notation "e '==>' t" (at level 70).
@@ -121,17 +112,6 @@ Module BiDir.
     e ==> te ->
     t = i * te ->
     ERepl i e ==> t
-
-  | LInsideS a args t :
-    a ==> t ->
-    (forall n e, nth_error args n = Some e -> e <== t) ->
-    EInside a args ==> 1
-
-  | RInsideS a args t :
-    (exists e, In e args /\ e ==> t) ->
-    a <== t ->
-    (forall n e, nth_error args n = Some e -> e <== t) ->
-    EInside a args ==> 1
 
   where "e '==>' n" := (synth e n)
 
@@ -227,7 +207,6 @@ Module BiDir.
       + apply concat_args with (args := args); firstorder.
     - split; intros; inv H0; try (inv H2); inv H; assert (Heq: te = te0); subst;
         firstorder.
-    - split; intros; inv H0; inv H1; try (inv H2); firstorder.
   Qed.
 
   Theorem synth_inj : forall e t1 t2, e ==> t1 -> e ==> t2 -> t1 = t2.
@@ -304,21 +283,6 @@ Module BiDir.
     - destruct (synth_on_list _ H) as [ts [H1 H2]]. exists (sum ts).
       apply ConcatS with (ts := ts); firstorder.
     - destruct IHe as [t H]. exists (n * t). apply ReplS with (te := t); firstorder.
-    - destruct (synth_on_list _ H) as [ts [H1 H2]]. destruct IHe as [te He]. exists 1.
-      destruct (max_in_list te ts).
-      + unfold max_list in H0. apply LInsideS with (t := te). assumption.
-        intros. destruct (H _ _ H3) as [tes Hes]. apply (synth_can_check Hes). apply H0.
-        apply In_iff_nth_error. exists n. apply (H1 _ _ _ H3). assumption.
-      + destruct H0 as [m [H3 [H4 H5]]]. unfold max_list in H4.
-        apply RInsideS with (t := m). destruct (In_nth_error _ _ H3) as [n Hx].
-        assert (Hex: exists e0, nth_error args n = Some e0).
-        * exists (nth n args (EAtom 0)). apply nth_error_nth'. rewrite H2.
-          apply nth_error_Some. unfold not. intros. rewrite H0 in Hx. inversion Hx.
-        * destruct Hex as [e0 He0]. exists e0. split. apply (nth_error_In _ _ He0).
-          apply (H1 _ _ _ He0). assumption.
-        * apply (synth_can_check He H5).
-        * intros. destruct (H _ _ H0) as [te0 He0]. apply synth_can_check with (t := te0).
-          assumption. apply H4. apply (H1 _ _ _ H0) in He0. apply (nth_error_In _ _ He0).
   Qed.
 
   Theorem synth_dec : forall e t, decidable (e ==> t).
