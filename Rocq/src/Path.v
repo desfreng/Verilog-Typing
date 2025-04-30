@@ -1,9 +1,12 @@
 From Stdlib Require Import Lists.List.
 From Stdlib Require Arith.Arith.
+From Stdlib Require Arith.Wf_nat.
 From Verilog Require Import Expr.
 From Verilog Require Import Utils.
 
 Import ListNotations.
+Import Wf_nat.
+
 Import Expr.
 Import Utils.
 
@@ -19,6 +22,16 @@ Module Path.
   .
 
   Definition path : Type := list PathItem.
+
+  Theorem path_ind : forall (P : path -> Prop), P [] -> (forall x l, P l -> P (l ++ [x])) -> forall p, P p.
+  Proof.
+    intros. induction p using (induction_ltof1 _ (@length _)). unfold ltof in H1.
+    destruct (list_sep _ x Lhs).
+    - subst. assumption.
+    - rewrite e. apply H0. apply H1. assert (Hx: x <> []).
+      + unfold not. intros. subst. discriminate e.
+      + apply removelast_length. assumption.
+  Qed.
 
   Inductive IsPath : Expr -> path -> Prop :=
   | P_Empty : forall e, IsPath e []

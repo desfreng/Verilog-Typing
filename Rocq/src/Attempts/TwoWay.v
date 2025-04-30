@@ -17,13 +17,6 @@ Set Implicit Arguments.
 
 Module TwoWay.
 
-  Fixpoint sum (l: list nat) :=
-    match l with
-    | [] => 0
-    | hd :: tl => hd + sum tl
-    end
-  .
-
   Inductive type : nat -> Expr -> nat -> Prop :=
   | TAtom : forall n s,
       type n (EAtom s) s
@@ -78,20 +71,4 @@ Module TwoWay.
       + reflexivity.
     - inv H. inv H4. inv H2. inv H5. inv H3. reflexivity.
   Qed.
-
-
-  Lemma concat: forall eList nList n,
-      length eList = length nList ->
-      ExprHasType (EConcat eList) n <->
-        (forall i f s, nth_error eList i = Some f
-                  -> nth_error nList i = Some s
-                  -> ExprHasType f s) /\ (n = sum nList).
-  Proof.
-    split; intros.
-    - split; intros.
-      + inv H0. generalize dependent nList. induction eList; intros.
-        * destruct i; discriminate H1.
-        * destruct i.
-          -- simpl in *. inv H1. destruct nList. discriminate H. inv H2. clear H.
-  Admitted.
 End TwoWay.

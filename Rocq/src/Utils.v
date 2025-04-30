@@ -3,8 +3,8 @@ From Stdlib Require Import Arith.Compare_dec.
 From Stdlib Require Import PeanoNat.
 From Stdlib Require Import Lia.
 
-Import ListNotations.
 Import Nat.
+Import ListNotations.
 
 Module Utils.
 
@@ -107,4 +107,22 @@ Module Utils.
     | [ |- _ /\ _ ] => apply and_with_impl; [idtac|intros]
     end
   .
+
+  Lemma list_sep :
+    forall T (l: list T) d, {l = []} + {l = removelast l ++ [last l d]}.
+  Proof.
+    destruct l. intros.
+    - left. reflexivity.
+    - right. apply app_removelast_last. unfold not. intros. discriminate H.
+  Qed.
+
+  Lemma removelast_length : forall T (l: list T), l <> [] -> length (removelast l) < length l.
+  Proof.
+    induction l; intros.
+    - contradiction.
+    - simpl. destruct l eqn:Hl.
+      + lia.
+      + rewrite <- Hl in *. simpl. apply Arith_base.lt_n_S_stt. apply IHl.
+        rewrite Hl. unfold not. intros. discriminate H0.
+  Qed.
 End Utils.
