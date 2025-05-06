@@ -631,4 +631,12 @@ Module TypeSystem.
   Proof.
     intros. destruct (f_sub_exp e). firstorder.
   Qed.
+
+  Lemma synth_check_determine_order : forall e1 e2 t1 t2 f1 f2,
+      e1 ==> t1 -| f1 -> e2 <== t2 -| f2 -> t2 <= t1 -> determine e2 <= determine e1.
+  Proof.
+    intros. destruct (synth_must_be_determine H). subst. destruct (synth_determine e2).
+    apply (synth_check_order H2) in H0. apply (le_trans _ _ _ H0 H1).
+  Qed.
+
 End TypeSystem.

@@ -19,12 +19,6 @@ Import Utils.
 Set Implicit Arguments.
 
 Module Equiv.
-  Lemma synth_check_determine_order : forall e1 e2 t1 t2 f1 f2,
-      e1 ==> t1 -| f1 -> e2 <== t2 -| f2 -> t2 <= t1 -> determine e2 <= determine e1.
-  Proof.
-    intros. destruct (synth_must_be_determine H). subst. destruct (synth_determine e2).
-    apply (synth_check_order H2) in H0. apply (le_trans _ _ _ H0 H1).
-  Qed.
 
   Theorem spec_implies_ts : forall f1,
       propagate_def f1 -> forall e f2, e ==> (determine e) -| f2 ->
@@ -47,7 +41,7 @@ Module Equiv.
       | [ F: _ @[_] = Some (EShift _ _), H: shift_propagate _ |- _ ] =>
           destruct (H _ _ _ _ F)
       | [ F: _ @[_] = Some (EAssign _ _), H: assign_propagate _ |- _ ] =>
-          apply H in F
+          specialize (H _ _ _ _ F _ (eq_refl _))
       | [ F: _ @[_] = Some (EShiftAssign _ _), H: shiftassign_propagate _ |- _ ] =>
           apply H in F
       | [ F: _ @[_] = Some (ECond _ _ _), H: cond_propagate _ |- _ ] =>
@@ -98,8 +92,7 @@ Module Equiv.
       + _gen_eq_spec_ts; inv Hf; inv H3. rewrite He; simpl; _tac_spec_ts.
       + _gen_eq_spec_ts; inv Hf; inv H3; inv IHp; simpl; try _tac_spec_ts.
         rewrite H1; simpl; _tac_spec_ts.
-      + _gen_eq_spec_ts; inv Hf; inv H3; simpl; specialize (He _ (eq_refl _));
-        rewrite He.
+      + _gen_eq_spec_ts; inv Hf; inv H3; simpl; rewrite HAssign.
         * destruct (synth_determine e'). rewrite (max_r _ _ (synth_check_order H H7)).
           apply (check_root H7).
         * destruct (synth_must_be_determine H5). subst.
@@ -132,8 +125,7 @@ Module Equiv.
       + _gen_eq_spec_ts; inv Hf; inv H3; inv H1; rewrite He; simpl; _tac_spec_ts.
       + _gen_eq_spec_ts; inv Hf; inv H3; try (inv H2); inv IHp; simpl; try _tac_spec_ts.
         rewrite H1. simpl; _tac_spec_ts.
-      + _gen_eq_spec_ts; inv Hf; inv H3; inv H2; simpl; specialize (He _ (eq_refl _));
-        rewrite He.
+      + _gen_eq_spec_ts; inv Hf; inv H3; inv H2; simpl; rewrite HAssign.
         * destruct (synth_determine e'). rewrite (max_r _ _ (synth_check_order H2 H9)).
           apply (check_root H9).
         * destruct (synth_must_be_determine H7). subst.
@@ -160,8 +152,7 @@ Module Equiv.
         (specialize (H4 []); rewrite app_nil_r in H4; assumption);
         rewrite H4 in H2; destruct e'.
       + inv Hf.
-      + _gen_eq_spec_ts; inv Hf; inv H3; simpl in Hf'; apply IHp in Hf';
-        simpl in H2; subst.
+      + _gen_eq_spec_ts; inv Hf; inv H3; simpl in *; apply IHp in Hf'.
         * apply synth_root in H8. congruence.
         * apply check_root in H8. congruence.
         * apply check_root in H11. congruence.
@@ -181,14 +172,33 @@ Module Equiv.
           apply check_root in H11. congruence.
         * rewrite (max_r _ _ (synth_check_determine_order H11 H8 (le_refl _))) in *.
           destruct (synth_must_be_determine H11). simpl in *. congruence.
-      + admit.
-      + admit.
-      + admit.
-      + admit.
-      + admit.
-      + admit.
-      + admit.
-      + admit.
+      + _gen_eq_spec_ts; inv Hf; inv H3; simpl in *.
+        * destruct (synth_must_be_determine H8). congruence.
+        * destruct (synth_must_be_determine H11). congruence.
+      + _gen_eq_spec_ts; inv Hf; inv H3; simpl in *;
+        edestruct synth_must_be_determine; [ eassumption | congruence].
+      + _gen_eq_spec_ts; inv Hf; inv H3; simpl in *.
+        * apply synth_root in H8. specialize (IHp _ Hf'). congruence.
+        * edestruct synth_must_be_determine; [ eassumption | congruence].
+      + _gen_eq_spec_ts; inv Hf; inv H3; simpl in *; rewrite HAssign.
+        * destruct (synth_determine e'). rewrite (max_r _ _ (synth_check_order H H8)).
+          apply check_root in H8. congruence.
+        * destruct (synth_must_be_determine H6). subst.
+          rewrite (max_l _ _ (lt_le_incl _ _ H9)). congruence.
+      + _gen_eq_spec_ts; inv Hf; inv H3; simpl in *;
+        destruct (synth_must_be_determine H8); congruence.
+      + _gen_eq_spec_ts; inv Hf; inv H3; simpl in *; apply IHp in Hf'.
+        * destruct (synth_must_be_determine H10). congruence.
+        * destruct (synth_must_be_determine H10). congruence.
+        * apply synth_root in H13. congruence.
+        * apply check_root in H13. congruence.
+        * apply check_root in H14. congruence.
+        * apply synth_root in H14. congruence.
+      + inv Hf; _gen_eq_spec_ts; inv H3; inv H1; repeat gen_nth; simpl in *.
+        rewrite H1 in *. specialize (H8 _ _ _ _ H6 H H1).
+        destruct (synth_must_be_determine H8). congruence.
+      + _gen_eq_spec_ts; inv Hf; inv H3; simpl in *;
+        edestruct synth_must_be_determine; [ eassumption | congruence].
       + inv Hf.
       + _gen_eq_spec_ts; inv Hf; inv H3; try (inv H5); simpl in Hf'; apply IHp in Hf';
         simpl in H2; subst.
@@ -209,14 +219,40 @@ Module Equiv.
           apply check_root in H13. congruence.
         * rewrite (max_r _ _ (synth_check_determine_order H13 H10 (le_refl _))) in *.
           destruct (synth_must_be_determine H13). simpl in *. congruence.
-      + admit.
-      + admit.
-      + admit.
-      + admit.
-      + admit.
-      + admit.
-      + admit.
-      + admit.
-  Admitted.
+      + _gen_eq_spec_ts; inv Hf; inv H3; inv H7; simpl in *.
+        * destruct (synth_must_be_determine H10). congruence.
+        * destruct (synth_must_be_determine H13). congruence.
+      + _gen_eq_spec_ts; inv Hf; inv H3; inv H1; simpl in *;
+        edestruct synth_must_be_determine; [ eassumption | congruence].
+      + _gen_eq_spec_ts; inv Hf; inv H3; try (inv H5); simpl in *.
+        * apply check_root in H8. specialize (IHp _ Hf'). congruence.
+        * edestruct synth_must_be_determine; [ eassumption | congruence].
+      + _gen_eq_spec_ts; inv Hf; inv H3; inv H5; simpl in *; rewrite HAssign.
+        * destruct (synth_determine e'). rewrite (max_r _ _ (synth_check_order H3 H10)).
+          apply check_root in H10. congruence.
+        * destruct (synth_must_be_determine H8). subst.
+          rewrite (max_l _ _ (lt_le_incl _ _ H11)). congruence.
+      + _gen_eq_spec_ts; inv Hf; inv H3; inv H5; simpl in *;
+        destruct (synth_must_be_determine H10); congruence.
+      + _gen_eq_spec_ts; inv Hf; inv H3; try (inv H6); simpl in *; apply IHp in Hf'.
+        * destruct (synth_must_be_determine H10). congruence.
+        * apply check_root in H13. congruence.
+        * apply check_root in H14. congruence.
+      + inv Hf; _gen_eq_spec_ts; inv H3; inv H1; repeat gen_nth; simpl in *.
+        rewrite H1 in *. specialize (H10 _ _ _ _ H6 H3 H1).
+        destruct (synth_must_be_determine H10). congruence.
+      + _gen_eq_spec_ts; inv Hf; inv H3; inv H5; simpl in *;
+        destruct (synth_must_be_determine H8); congruence.
+  Qed.
+
+  Theorem ts_equiv_spec : forall f1 f2 e,
+      propagate_def f1 -> e ==> (determine e) -| f2 ->
+      forall p, IsPath e p -> forall n, f2 p = Some n <-> f1 e p = n.
+  Proof.
+    split; intros.
+    - apply (ts_implies_spec H H0 H1 H2).
+    - apply (spec_implies_ts H H0 H1 H2).
+  Qed.
+
 End Equiv.
 
