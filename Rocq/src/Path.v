@@ -1,6 +1,7 @@
 From Stdlib Require Import Lists.List.
 From Stdlib Require Arith.Arith.
 From Stdlib Require Arith.Wf_nat.
+
 From Verilog Require Import Expr.
 From Verilog Require Import Utils.
 
@@ -14,10 +15,9 @@ Set Implicit Arguments.
 
 Module Path.
   Inductive PathItem :=
-  | Lhs
-  | Rhs
+  | Left
+  | Right
   | Arg
-  | Cond
   | Args (i: nat)
   .
 
@@ -26,31 +26,30 @@ Module Path.
   Theorem path_ind : forall (P : path -> Prop), P [] -> (forall x l, P l -> P (l ++ [x])) -> forall p, P p.
   Proof.
     intros. induction p using (induction_ltof1 _ (@length _)). unfold ltof in H1.
-    destruct (list_sep _ x Lhs).
-    - subst. assumption.
-    - rewrite e. apply H0. apply H1. assert (Hx: x <> []).
-      + unfold not. intros. subst. discriminate e.
-      + apply removelast_length. assumption.
+    destruct (list_sep x) as [[a b]|] eqn:Hp.
+    - apply list_sep_Some in Hp. destruct Hp as [Hp Hlen].
+      rewrite Hp. apply H0. apply H1. assumption.
+    - apply list_sep_None in Hp. subst. assumption.
   Qed.
 
   Inductive IsPath : Expr -> path -> Prop :=
   | P_Empty : forall e, IsPath e []
-  | P_LhsBinOp : forall lhs rhs p, IsPath lhs p -> IsPath (EBinOp lhs rhs) (Lhs :: p)
-  | P_RhsBinOp : forall lhs rhs p, IsPath rhs p -> IsPath (EBinOp lhs rhs) (Rhs :: p)
+  | P_LhsBinOp : forall lhs rhs p, IsPath lhs p -> IsPath (EBinOp lhs rhs) (Left :: p)
+  | P_RhsBinOp : forall lhs rhs p, IsPath rhs p -> IsPath (EBinOp lhs rhs) (Right :: p)
   | P_UnOpArg : forall arg p, IsPath arg p -> IsPath (EUnOp arg) (Arg :: p)
   | P_CastArg : forall arg p, IsPath arg p -> IsPath (ECast arg) (Arg :: p)
-  | P_LhsCompOp : forall lhs rhs p, IsPath lhs p -> IsPath (EComp lhs rhs) (Lhs :: p)
-  | P_RhsCompOp : forall lhs rhs p, IsPath rhs p -> IsPath (EComp lhs rhs) (Rhs :: p)
-  | P_LhsLogic : forall lhs rhs p, IsPath lhs p -> IsPath (ELogic lhs rhs) (Lhs :: p)
-  | P_RhsLogic : forall lhs rhs p, IsPath rhs p -> IsPath (ELogic lhs rhs) (Rhs :: p)
+  | P_LhsCompOp : forall lhs rhs p, IsPath lhs p -> IsPath (EComp lhs rhs) (Left :: p)
+  | P_RhsCompOp : forall lhs rhs p, IsPath rhs p -> IsPath (EComp lhs rhs) (Right :: p)
+  | P_LhsLogic : forall lhs rhs p, IsPath lhs p -> IsPath (ELogic lhs rhs) (Left :: p)
+  | P_RhsLogic : forall lhs rhs p, IsPath rhs p -> IsPath (ELogic lhs rhs) (Right :: p)
   | P_RedArg : forall arg p, IsPath arg p -> IsPath (EReduction arg) (Arg :: p)
-  | P_LhsShift : forall lhs rhs p, IsPath lhs p -> IsPath (EShift lhs rhs) (Lhs :: p)
-  | P_RhsShift : forall lhs rhs p, IsPath rhs p -> IsPath (EShift lhs rhs) (Rhs :: p)
+  | P_LhsShift : forall lhs rhs p, IsPath lhs p -> IsPath (EShift lhs rhs) (Left :: p)
+  | P_RhsShift : forall lhs rhs p, IsPath rhs p -> IsPath (EShift lhs rhs) (Right :: p)
   | P_AssignArg : forall op arg p, IsPath arg p -> IsPath (EAssign op arg) (Arg :: p)
   | P_ShiftAssignArg : forall op arg p, IsPath arg p -> IsPath (EShiftAssign op arg) (Arg :: p)
-  | P_CondCond : forall cond tb fb p, IsPath cond p -> IsPath (ECond cond tb fb) (Cond :: p)
-  | P_CondTrue : forall cond tb fb p, IsPath tb p -> IsPath (ECond cond tb fb) (Lhs :: p)
-  | P_CondFalse : forall cond tb fb p, IsPath fb p -> IsPath (ECond cond tb fb) (Rhs :: p)
+  | P_CondCond : forall cond tb fb p, IsPath cond p -> IsPath (ECond cond tb fb) (Arg :: p)
+  | P_CondTrue : forall cond tb fb p, IsPath tb p -> IsPath (ECond cond tb fb) (Left :: p)
+  | P_CondFalse : forall cond tb fb p, IsPath fb p -> IsPath (ECond cond tb fb) (Right :: p)
   | P_ConcatArgs : forall n args e p,
       nth_error args n = Some e -> IsPath e p -> IsPath (EConcat args) (Args n :: p)
   | P_ReplArg : forall i arg p, IsPath arg p -> IsPath (ERepl i arg) (Arg :: p)
@@ -88,18 +87,18 @@ Module Path.
   Fixpoint all_path e :=
     match e with
     | EAtom _ => [[]]
-    | EBinOp lhs rhs => [] :: add_path Lhs (all_path lhs) ++ add_path Rhs (all_path rhs)
+    | EBinOp lhs rhs => [] :: add_path Left (all_path lhs) ++ add_path Right (all_path rhs)
     | EUnOp arg => [] :: add_path Arg (all_path arg)
     | ECast arg => [] :: add_path Arg (all_path arg)
-    | EComp lhs rhs => [] :: add_path Lhs (all_path lhs) ++ add_path Rhs (all_path rhs)
-    | ELogic lhs rhs => [] :: add_path Lhs (all_path lhs) ++ add_path Rhs (all_path rhs)
+    | EComp lhs rhs => [] :: add_path Left (all_path lhs) ++ add_path Right (all_path rhs)
+    | ELogic lhs rhs => [] :: add_path Left (all_path lhs) ++ add_path Right (all_path rhs)
     | EReduction arg => [] :: add_path Arg (all_path arg)
-    | EShift lhs rhs => [] :: add_path Lhs (all_path lhs) ++ add_path Rhs (all_path rhs)
+    | EShift lhs rhs => [] :: add_path Left (all_path lhs) ++ add_path Right (all_path rhs)
     | EAssign _ arg => [] :: add_path Arg (all_path arg)
     | EShiftAssign _ arg => [] :: add_path Arg (all_path arg)
     | ECond cond tb fb =>
-        [] :: add_path Cond (all_path cond) ++ add_path Lhs (all_path tb)
-          ++ add_path Rhs (all_path fb)
+        [] :: add_path Arg (all_path cond) ++ add_path Left (all_path tb)
+          ++ add_path Right (all_path fb)
     | EConcat args =>
         let lPath := mapI (fun i e => add_path (Args i) (all_path e)) args in
         [] :: concat lPath
@@ -169,22 +168,22 @@ Module Path.
   Fixpoint sub_expr (e: Expr) (p: path) :=
     match e, p with
     | e, [] => Some e
-    | EBinOp lhs _, Lhs :: p => sub_expr lhs p
-    | EBinOp _ rhs, Rhs :: p => sub_expr rhs p
+    | EBinOp lhs _, Left :: p => sub_expr lhs p
+    | EBinOp _ rhs, Right :: p => sub_expr rhs p
     | EUnOp arg, Arg :: p => sub_expr arg p
     | ECast arg, Arg :: p => sub_expr arg p
-    | EComp lhs _, Lhs :: p => sub_expr lhs p
-    | EComp _ rhs, Rhs :: p => sub_expr rhs p
-    | ELogic lhs _, Lhs :: p => sub_expr lhs p
-    | ELogic _ rhs, Rhs :: p => sub_expr rhs p
+    | EComp lhs _, Left :: p => sub_expr lhs p
+    | EComp _ rhs, Right :: p => sub_expr rhs p
+    | ELogic lhs _, Left :: p => sub_expr lhs p
+    | ELogic _ rhs, Right :: p => sub_expr rhs p
     | EReduction arg, Arg :: p => sub_expr arg p
-    | EShift lhs _, Lhs :: p => sub_expr lhs p
-    | EShift _ rhs, Rhs :: p => sub_expr rhs p
+    | EShift lhs _, Left :: p => sub_expr lhs p
+    | EShift _ rhs, Right :: p => sub_expr rhs p
     | EAssign _ arg, Arg :: p => sub_expr arg p
     | EShiftAssign _ arg, Arg :: p => sub_expr arg p
-    | ECond cond _ _, Cond :: p => sub_expr cond p
-    | ECond _ tb _, Lhs :: p => sub_expr tb p
-    | ECond _ _ fb, Rhs :: p => sub_expr fb p
+    | ECond cond _ _, Arg :: p => sub_expr cond p
+    | ECond _ tb _, Left :: p => sub_expr tb p
+    | ECond _ _ fb, Right :: p => sub_expr fb p
     | EConcat args, Args i :: p =>
         match nth_error args i with
         | Some e => sub_expr e p

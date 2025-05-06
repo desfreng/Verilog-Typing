@@ -1,5 +1,4 @@
 From Stdlib Require Import Lists.List.
-From Verilog Require Import ident_to_string.
 From Verilog Require Import Utils.
 
 Import ListNotations.
@@ -30,8 +29,8 @@ Module Expr.
   Set Elimination Schemes.
 
   Section Expr_ind_gen.
-    Variable P : Expr -> Prop.
-    Variable P0 : list Expr -> Prop.
+    Variable P : Expr -> Set.
+    Variable P0 : list Expr -> Set.
 
     Hypothesis HPAtom:
       forall o, P (EAtom o).
@@ -100,7 +99,7 @@ Module Expr.
   End Expr_ind_gen.
 
   Section Expr_ind.
-    Variable P : Expr -> Prop.
+    Variable P : Expr -> Set.
 
     Hypothesis HPAtom:
       forall o, P (EAtom o).

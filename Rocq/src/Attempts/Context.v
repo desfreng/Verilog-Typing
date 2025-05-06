@@ -17,24 +17,24 @@ Definition push {X: Type} l (x: X) := l ++ [x].
 Fixpoint e_ctx (e: Expr) (p: path) : list path :=
   match e with
   | EAtom _ => []
-  | EBinOp lhs rhs => e_ctx lhs (push p Lhs) ++ e_ctx rhs (push p Rhs)
+  | EBinOp lhs rhs => e_ctx lhs (push p Left) ++ e_ctx rhs (push p Right)
   | EUnOp arg => e_ctx arg (push p Arg)
   | ECast arg => let p' := push p Arg in p' :: e_ctx arg p'
-  | EComp lhs rhs => p :: e_ctx lhs (push p Lhs) ++ e_ctx rhs (push p Rhs)
+  | EComp lhs rhs => p :: e_ctx lhs (push p Left) ++ e_ctx rhs (push p Right)
   | ELogic lhs rhs =>
-      let lhsP := push p Lhs in
-      let rhsP := push p Rhs in
+      let lhsP := push p Left in
+      let rhsP := push p Right in
       lhsP :: e_ctx lhs lhsP ++ rhsP :: e_ctx rhs rhsP
   | EReduction arg => let p' := push p Arg in p' :: e_ctx arg p'
   | EShift lhs rhs =>
-      let rhsP := push p Rhs in
-      e_ctx lhs (push p Lhs) ++ rhsP :: e_ctx rhs rhsP
+      let rhsP := push p Right in
+      e_ctx lhs (push p Left) ++ rhsP :: e_ctx rhs rhsP
   | EAssign _ arg => let p' := push p Arg in p' :: e_ctx arg p'
   | EShiftAssign _ arg => let p' := push p Arg in p' :: e_ctx arg p'
   | ECond cond tb fb =>
-      let condP := push p Cond in
-      condP :: e_ctx cond condP ++ e_ctx tb (push p Lhs)
-        ++ e_ctx fb (push p Rhs)
+      let condP := push p Arg in
+      condP :: e_ctx cond condP ++ e_ctx tb (push p Left)
+        ++ e_ctx fb (push p Right)
   | EConcat args =>
       concat (mapI (fun i e => let newP := push p (Args i) in newP :: e_ctx e newP) args)
   | ERepl _ arg => let p' := push p Arg in p' :: e_ctx arg p'

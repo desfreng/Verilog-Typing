@@ -17,6 +17,18 @@
 
 \allowdisplaybreaks{}
 
+\DeclareMathOperator{\Path}{Path}
+
+\newcommand{\Left}{\ensuremath{\mathrm{Left}}}
+\newcommand{\Right}{\ensuremath{\mathrm{Right}}}
+\newcommand{\Arg}{\ensuremath{\mathrm{Arg}}}
+\newcommand{\Args}[1]{\ensuremath{\mathrm{Args}(#1)}}
+
+\DeclareMathOperator{\Binary}{Binary}
+\DeclareMathOperator{\Unary}{Unary}
+\DeclareMathOperator{\Ternary}{Ternary}
+\DeclareMathOperator{\Narry}{Narry}
+
 \newcommand{\mytilde}{\raisebox{-.7ex}{\asciitilde{}}}
 
 \renewcommand{\epsilon}{\varepsilon}
@@ -55,14 +67,16 @@
 
 \renewcommand{\S}{\ensuremath{\Rightarrow}}
 \newcommand{\C}{\ensuremath{\Leftarrow}}
-% \newcommand{\seq}[1]{\ensuremath{\Gamma, \Phi \vdash #1}}
 
-\newcommand{\s}[2]{#1 \S{} #2}
-\renewcommand{\c}[2]{#1 \C{} #2}
+\newcommand{\s}[3]{#1 \S{} #2 \dashv{} #3}
+\renewcommand{\c}[3]{#1 \C{} #2 \dashv{} #3}
 
 \begin{document}
 
 \section*{Verilog Size Checking}
+
+\subsection*{Path}
+Definition of paths and their relation to sub-expressions.
 
 \subsection*{Expressions}
 
@@ -77,11 +91,47 @@ We use the following notations:
 \begin{itemize}
     \item $\Gamma$ maps atoms to their size,
     \item $\Phi$ maps lvalues to their size,
-    \item The statement $\s{e}{t}$ means ``$e$ has a size $t$'',
-    \item The statement $\c{e}{t}$ means ``$e$ can be resized to $t$''.
+    \item The statement $\s{e}{t}{f}$ means ``$e$ has size $t$, with $f$ mapping each sub-expressions of $e$ to their size'',
+    \item The statement $\c{e}{t}{f}$ means ``$e$ can be resized to $t$, with $f$ mapping each sub-expressions of $e$ to their size''.
 \end{itemize}
 
 
+\subsubsection*{Function combinator}
+\begin{equation*}
+    \renewcommand\arraystretch{1.1}
+    \begin{array}{ccc}
+        \Binary(t, f, g) : \left\{
+        \begin{array}{ccc}
+            {[]}               & \mapsto & t     \\
+            \Left \dblcolon p  & \mapsto & f (p) \\
+            \Right \dblcolon p & \mapsto & g (p)
+        \end{array}
+        \right.
+         & \hspace{1em} &
+        \Unary(f, t) : \left\{
+        \begin{array}{ccc}
+            {[]}             & \mapsto & t     \\
+            \Arg \dblcolon p & \mapsto & f (p)
+        \end{array}
+        \right.
+        \\
+        \Narry(t, f_1, \dots, f_k) : \left\{
+        \begin{array}{ccc}
+            {[]}                 & \mapsto & t       \\
+            \Args{i} \dblcolon p & \mapsto & f_i (p)
+        \end{array}
+        \right.
+         & \hspace{1em} &
+        \Ternary(t, f, g, h) : \left\{
+        \begin{array}{ccc}
+            {[]}               & \mapsto & t     \\
+            \Arg \dblcolon p   & \mapsto & f (p) \\
+            \Left \dblcolon p  & \mapsto & g (p) \\
+            \Right \dblcolon p & \mapsto & h (p)
+        \end{array}
+        \right.
+    \end{array}
+\end{equation*}
 
 \subsubsection*{Base case}
 
@@ -89,7 +139,7 @@ We use the following notations:
     \begin{prooftree}
         \hypo{\Gamma(e) = s}
         \hypo{e \in \mathcal{A}}
-        \infer2[Atom\S]{\s{e}{s}}
+        \infer2[Atom\S]{\s{e}{s}{\{[]\mapsto s\}}}
     \end{prooftree}
 \end{equation*}
 
@@ -98,10 +148,10 @@ We use the following notations:
 
 \begin{equation*}
     \begin{prooftree}
-        \hypo{\s{e}{s}}
+        \hypo{\s{e}{s}{f}}
         \hypo{s \leqslant t}
         \hypo{e \in \mathcal{R}}
-        \infer3[Resize\C]{\c{e}{t}}
+        \infer3[Resize\C]{\c{e}{t}{f\big[{[]}\mapsto t\big]}}
     \end{prooftree}
 \end{equation*}
 
@@ -115,39 +165,40 @@ We use the following notations:
           \begin{align*}
                &
               \begin{prooftree}
-                  \hypo{\s{a}{t}}
-                  \hypo{\c{b}{t}}
-                  \infer2[LBinOp\S]{\s{a\oplus b}{t}}
+                  \hypo{\s{a}{t}{f_a}}
+                  \hypo{\c{b}{t}{f_b}}
+                  \infer2[LBinOp\S]{\s{a\oplus b}{t}{\Binary(t, f_a, f_b)}}
               \end{prooftree}
                &
                &
               \begin{prooftree}
-                  \hypo{\c{a}{t}}
-                  \hypo{\s{b}{t}}
-                  \infer2[RBinOp\S]{\s{a\oplus b}{t}}
-              \end{prooftree}
-               &
-               &
-              \begin{prooftree}
-                  \hypo{\c{a}{t}}
-                  \hypo{\c{b}{t}}
-                  \infer2[BinOp\C]{\c{a\oplus b}{t}}
+                  \hypo{\c{a}{t}{f_a}}
+                  \hypo{\s{b}{t}{f_b}}
+                  \infer2[RBinOp\S]{\s{a\oplus b}{t}{\Binary(t, f_a, f_b)}}
               \end{prooftree}
           \end{align*}
+          \vspace*{.5em}
+          \begin{equation*}
+              \begin{prooftree}
+                  \hypo{\c{a}{t}{f_a}}
+                  \hypo{\c{b}{t}{f_b}}
+                  \infer2[BinOp\C]{\c{a\oplus b}{t}{\Binary(t, f_a, f_b)}}
+              \end{prooftree}
+          \end{equation*}
 
     \item $\oplus \in \unOp$:
 
           \begin{align*}
                &
               \begin{prooftree}
-                  \hypo{\s{e}{t}}
-                  \infer1[UnOp\S]{\s{\oplus e}{t}}
+                  \hypo{\s{e}{t}{f}}
+                  \infer1[UnOp\S]{\s{\oplus e}{t}{\Unary(t, f)}}
               \end{prooftree}
                &
                &
               \begin{prooftree}
-                  \hypo{\c{e}{t}}
-                  \infer1[UnOp\C]{\c{\oplus e}{t}}
+                  \hypo{\c{e}{t}{f}}
+                  \infer1[UnOp\C]{\c{\oplus e}{t}{\Unary(t, f)}}
               \end{prooftree}
           \end{align*}
 
@@ -155,8 +206,8 @@ We use the following notations:
 
           \begin{equation*}
               \begin{prooftree}
-                  \hypo{\s{e}{t}}
-                  \infer1[Cast\S]{\s{\oplus(e)}{t}}
+                  \hypo{\s{e}{t}{f}}
+                  \infer1[Cast\S]{\s{\oplus(e)}{t}{\Unary(t, f)}}
               \end{prooftree}
           \end{equation*}
 
@@ -165,16 +216,16 @@ We use the following notations:
           \begin{align*}
                &
               \begin{prooftree}
-                  \hypo{\s{a}{t}}
-                  \hypo{\c{b}{t}}
-                  \infer2[LCmp\S]{\s{a \oplus b}{1}}
+                  \hypo{\s{a}{t}{f_a}}
+                  \hypo{\c{b}{t}{f_b}}
+                  \infer2[LCmp\S]{\s{a \oplus b}{1}{\Binary(1, f_a, f_b)}}
               \end{prooftree}
                &
                &
               \begin{prooftree}
-                  \hypo{\c{a}{t}}
-                  \hypo{\s{b}{t}}
-                  \infer2[RCmp\S]{\s{a \oplus b}{1}}
+                  \hypo{\c{a}{t}{f_a}}
+                  \hypo{\s{b}{t}{f_b}}
+                  \infer2[RCmp\S]{\s{a \oplus b}{1}{\Binary(1, f_a, f_b)}}
               \end{prooftree}
           \end{align*}
 
@@ -182,9 +233,9 @@ We use the following notations:
 
           \begin{equation*}
               \begin{prooftree}
-                  \hypo{\s{a}{t_a}}
-                  \hypo{\s{b}{t_b}}
-                  \infer2[Logic\S]{\s{a \oplus b}{1}}
+                  \hypo{\s{a}{t_a}{f_a}}
+                  \hypo{\s{b}{t_b}{f_b}}
+                  \infer2[Logic\S]{\s{a \oplus b}{1}{\Binary(1, f_a, f_b)}}
               \end{prooftree}
           \end{equation*}
 
@@ -192,8 +243,8 @@ We use the following notations:
 
           \begin{equation*}
               \begin{prooftree}
-                  \hypo{\s{e}{t}}
-                  \infer1[Red\S]{\s{\oplus e}{1}}
+                  \hypo{\s{e}{t}{f}}
+                  \infer1[Red\S]{\s{\oplus e}{1}{\Unary(1, f)}}
               \end{prooftree}
           \end{equation*}
 
@@ -203,16 +254,16 @@ We use the following notations:
           \begin{align*}
                &
               \begin{prooftree}
-                  \hypo{\s{a}{t}}
-                  \hypo{\s{b}{t_b}}
-                  \infer2[Shift\S]{\s{a \oplus b}{t}}
+                  \hypo{\s{a}{t}{f_a}}
+                  \hypo{\s{b}{t_b}{f_b}}
+                  \infer2[Shift\S]{\s{a \oplus b}{t}{\Binary(t, f_a, f_b)}}
               \end{prooftree}
                &
                &
               \begin{prooftree}
-                  \hypo{\c{a}{t}}
-                  \hypo{\s{b}{t_b}}
-                  \infer2[Shift\C]{\c{a \oplus b}{t}}
+                  \hypo{\c{a}{t}{f_a}}
+                  \hypo{\s{b}{t_b}{f_b}}
+                  \infer2[Shift\C]{\c{a \oplus b}{t}{\Binary(t, f_a, f_b)}}
               \end{prooftree}
           \end{align*}
 
@@ -222,16 +273,16 @@ We use the following notations:
                &
               \begin{prooftree}
                   \hypo{\phi(l) = t}
-                  \hypo{\c{e}{t}}
-                  \infer2[LAssign\S]{\s{l \oplus e}{t}}
+                  \hypo{\c{e}{t}{f}}
+                  \infer2[LAssign\S]{\s{l \oplus e}{t}{\Unary(t, f)}}
               \end{prooftree}
                &
                &
               \begin{prooftree}
                   \hypo{\phi(l) = t}
-                  \hypo{\s{e}{t_e}}
+                  \hypo{\s{e}{t_e}{f}}
                   \hypo{t < t_e}
-                  \infer3[RAssign\S]{\s{l \oplus e}{t}}
+                  \infer3[RAssign\S]{\s{l \oplus e}{t}{\Unary(t, f)}}
               \end{prooftree}
           \end{align*}
 
@@ -241,8 +292,8 @@ We use the following notations:
           \begin{equation*}
               \begin{prooftree}
                   \hypo{\phi(l) = t}
-                  \hypo{\s{e}{t_e}}
-                  \infer2[AssignShift\S]{\s{l \oplus e}{t}}
+                  \hypo{\s{e}{t_e}{f}}
+                  \infer2[AssignShift\S]{\s{l \oplus e}{t}{\Unary(t, f)}}
               \end{prooftree}
           \end{equation*}
 
@@ -252,39 +303,41 @@ We use the following notations:
           \begin{align*}
                &
               \begin{prooftree}
-                  \hypo{\s{e}{t_e}}
-                  \hypo{\s{a}{t}}
-                  \hypo{\c{b}{t}}
-                  \infer3[LCond\S]{\s{e \texttt{?} a \texttt{:} b}{t}}
+                  \hypo{\s{e}{t_e}{f_e}}
+                  \hypo{\s{a}{t}{f_a}}
+                  \hypo{\c{b}{t}{f_b}}
+                  \infer3[LCond\S]{\s{e \texttt{?} a \texttt{:} b}{t}{\Ternary(t, f_e, f_a, f_b)}}
               \end{prooftree}
                &
                &
               \begin{prooftree}
-                  \hypo{\s{e}{t_e}}
-                  \hypo{\c{a}{t}}
-                  \hypo{\s{b}{t}}
-                  \infer3[RCond\S]{\s{e \texttt{?} a \texttt{:} b}{t}}
-              \end{prooftree}
-               &
-               &
-              \begin{prooftree}
-                  \hypo{\s{e}{t_e}}
-                  \hypo{\c{a}{t}}
-                  \hypo{\c{b}{t}}
-                  \infer3[Cond\C]{\c{e \texttt{?} a \texttt{:} b}{t}}
+                  \hypo{\s{e}{t_e}{f_e}}
+                  \hypo{\c{a}{t}{f_a}}
+                  \hypo{\s{b}{t}{f_b}}
+                  \infer3[RCond\S]{\s{e \texttt{?} a \texttt{:} b}{t}{\Ternary(t, f_e, f_a, f_b)}}
               \end{prooftree}
           \end{align*}
+          \vspace*{.5em}
+          \begin{equation*}
+              \begin{prooftree}
+                  \hypo{\s{e}{t_e}{f_e}}
+                  \hypo{\c{a}{t}{f_a}}
+                  \hypo{\c{b}{t}{f_b}}
+                  \infer3[Cond\C]{\c{e \texttt{?} a \texttt{:} b}{t}{\Ternary(t, f_e, f_a, f_b)}}
+              \end{prooftree}
+          \end{equation*}
 
 
     \item Concatenation:
 
           \begin{equation*}
               \begin{prooftree}
-                  \hypo{\s{e_1}{t_1}}
+                  \hypo{\s{e_1}{t_1}{f_i}}
                   \hypo{\dots}
-                  \hypo{\s{e_k}{t_k}}
+                  \hypo{\s{e_k}{t_k}{f_k}}
                   \hypo{t = t_1 + \cdots + t_k}
-                  \infer4[Concat\S]{\s{\texttt{\{}e_1, \texttt{\dots}, e_k \texttt{\}}}{t}}
+                  \infer4[Concat\S]{\s{\texttt{\{}e_1, \texttt{\dots}, e_k \texttt{\}}}{t}
+                      {\Narry(t, f_1, \dots, f_k)}}
               \end{prooftree}
           \end{equation*}
 
@@ -294,9 +347,9 @@ We use the following notations:
           \begin{equation*}
               \begin{prooftree}
                   \hypo{i \in \mathbb{N}}
-                  \hypo{\s{e}{t_e}}
+                  \hypo{\s{e}{t_e}{f}}
                   \hypo{t = i \times t_e}
-                  \infer3[Repl\S]{\s{\texttt{\{}i~e\texttt{\}}}{t}}
+                  \infer3[Repl\S]{\s{\texttt{\{}i~e\texttt{\}}}{t}{\Unary(t, f)}}
               \end{prooftree}
           \end{equation*}
 \end{itemize}

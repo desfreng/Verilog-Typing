@@ -2,6 +2,7 @@ From Stdlib Require Import Lists.List.
 From Stdlib Require Import Arith.Compare_dec.
 From Stdlib Require Import PeanoNat.
 From Stdlib Require Import Lia.
+From Stdlib Require Import Classes.RelationClasses.
 
 Import Nat.
 Import ListNotations.
@@ -9,6 +10,18 @@ Import ListNotations.
 Module Utils.
 
   Ltac inv H := inversion H; clear H; subst.
+
+  Ltac splitHyp :=
+    match goal with
+    | [ H: _ /\ _ |- _ ] => destruct H
+    end
+  .
+
+  Ltac existsHyp :=
+    match goal with
+    | [ H: ex _ |- _ ] => destruct H
+    end
+  .
 
   Fixpoint mapI'{X Y: Type} f i (l: list X) : list Y :=
     match l with
@@ -108,12 +121,18 @@ Module Utils.
     end
   .
 
-  Lemma list_sep :
-    forall T (l: list T) d, {l = []} + {l = removelast l ++ [last l d]}.
+  Definition list_sep {T: Type} (l: list T) :=
+    match l with
+    | [] => None
+    | hd :: _ => Some (removelast l, last l hd)
+    end
+  .
+
+  Lemma list_sep_None : forall T (l: list T), list_sep l = None <-> l = [].
   Proof.
-    destruct l. intros.
-    - left. reflexivity.
-    - right. apply app_removelast_last. unfold not. intros. discriminate H.
+    split; intros.
+    - destruct l; [reflexivity | discriminate H].
+    - subst. reflexivity.
   Qed.
 
   Lemma removelast_length : forall T (l: list T), l <> [] -> length (removelast l) < length l.
@@ -125,4 +144,62 @@ Module Utils.
       + rewrite <- Hl in *. simpl. apply Arith_base.lt_n_S_stt. apply IHl.
         rewrite Hl. unfold not. intros. discriminate H0.
   Qed.
+
+  Lemma list_sep_Some : forall T (l: list T) x l',
+      list_sep l = Some (l', x) <-> l = l' ++ [x] /\ length l' < length l.
+  Proof.
+    split; intros.
+    - destruct l eqn:Hl.
+      + discriminate H.
+      + unfold list_sep in H. rewrite <- Hl in *. inversion H. split.
+        * apply app_removelast_last. unfold not. intros. subst. discriminate H0.
+        * apply removelast_length. subst. discriminate.
+    - destruct l eqn:Hl; destruct H.
+      + apply app_cons_not_nil in H. contradiction.
+      + unfold list_sep. rewrite <- Hl in *. assert (HlNil: l <> []). subst. discriminate.
+        apply app_removelast_last with (d := t0) in HlNil. rewrite HlNil in H.
+        rewrite app_inj_tail_iff in H. destruct H. subst. reflexivity.
+  Qed.
+
+  Definition le_option_nat (x y : option nat) : Prop :=
+    match x, y with
+    | None, _ => True
+    | Some _, None => False
+    | Some a, Some b => a <= b
+    end.
+
+  Instance le_option_nat_Reflexive : Reflexive le_option_nat.
+  Proof.
+    intros [n|]; simpl; auto.
+  Qed.
+
+  Lemma max_dec_bis : forall a b, {max a b = a /\ b <= a} + {max a b = b /\ a <= b}.
+  Proof.
+    intros.
+    destruct (max_dec a b).
+    - rewrite e. left. split. reflexivity. apply max_l_iff. assumption.
+    - rewrite e. right. split. reflexivity. apply max_r_iff. assumption.
+  Qed.
+
+  Lemma nth_error_lists : forall A B (l: list A) (l': list B) n x,
+      nth_error l n = Some x -> length l = length l' -> exists y, nth_error l' n = Some y.
+  Proof.
+    induction l; intros.
+    - destruct n; discriminate H.
+    - destruct l'. discriminate H0. inv H0. destruct n.
+      + eexists. reflexivity.
+      + firstorder.
+  Qed.
+
+
+  Ltac gen_nth :=
+    match goal with
+    | [ Hlen: length ?l1 = length ?l2, Hnth: nth_error ?l1 ?n = Some _ |- _ ] =>
+        destruct (nth_error_lists _ _ _ _ _ _ Hnth Hlen); clear Hlen
+    | [ Hlen: length ?l2 = length ?l1, Hnth: nth_error ?l1 ?n = Some _ |- _ ] =>
+        let HnewTh := fresh in assert(HnewTh: exists y, nth_error l2 n = Some y) by
+          (apply (nth_error_lists _ _ _ _ _ _ Hnth); symmetry; apply Hlen);
+                               destruct HnewTh; clear Hlen
+    end
+  .
 End Utils.
