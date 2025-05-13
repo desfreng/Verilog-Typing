@@ -28,78 +28,8 @@ Module Expr.
 
   Set Elimination Schemes.
 
-  Section Expr_ind_gen.
-    Variable P : Expr -> Set.
-    Variable P0 : list Expr -> Set.
-
-    Hypothesis HPAtom:
-      forall o, P (EAtom o).
-
-    Hypothesis HPBinOp:
-      forall lhs rhs, P lhs -> P rhs -> P (EBinOp lhs rhs).
-
-    Hypothesis HPUnOp:
-      forall arg, P arg -> P (EUnOp arg).
-
-    Hypothesis HPCast:
-      forall arg, P arg -> P (ECast arg).
-
-    Hypothesis HPComp:
-      forall lhs rhs, P lhs -> P rhs -> P (EComp lhs rhs).
-
-    Hypothesis HPLogic:
-      forall lhs rhs, P lhs -> P rhs -> P (ELogic lhs rhs).
-
-    Hypothesis HPReduction:
-      forall arg, P arg -> P (EReduction arg).
-
-    Hypothesis HPShift:
-      forall lhs rhs, P lhs -> P rhs -> P (EShift lhs rhs).
-
-    Hypothesis HPAssign:
-      forall op arg, P arg -> P (EAssign op arg).
-
-    Hypothesis HPShiftAssign:
-      forall op arg, P arg -> P (EShiftAssign op arg).
-
-    Hypothesis HPCond:
-      forall cond tb fb, P cond -> P tb -> P fb -> P (ECond cond tb fb).
-
-    Hypothesis HPConcat:
-      forall args, P0 args -> P (EConcat args).
-
-    Hypothesis HPRepl:
-      forall n arg, P arg -> P (ERepl n arg).
-
-    Hypothesis HP0Nil:
-      P0 [].
-
-    Hypothesis HP0Cons:
-      forall hd tl, P hd -> P0 tl -> P0 (hd :: tl).
-
-    Fixpoint Expr_ind_gen e : P e.
-    Proof.
-      destruct e.
-      - apply HPAtom.
-      - apply HPBinOp. firstorder. firstorder.
-      - apply HPUnOp. firstorder.
-      - apply HPCast. firstorder.
-      - apply HPComp. firstorder. firstorder.
-      - apply HPLogic. firstorder. firstorder.
-      - apply HPReduction. firstorder.
-      - apply HPShift. firstorder. firstorder.
-      - apply HPAssign. firstorder.
-      - apply HPShiftAssign. firstorder.
-      - apply HPCond. firstorder. firstorder. firstorder.
-      - apply HPConcat. induction args.
-        + apply HP0Nil.
-        + apply HP0Cons. firstorder. firstorder.
-      - apply HPRepl. firstorder.
-    Qed.
-  End Expr_ind_gen.
-
   Section Expr_ind.
-    Variable P : Expr -> Set.
+    Variable P : Expr -> Prop.
 
     Hypothesis HPAtom:
       forall o, P (EAtom o).
@@ -140,29 +70,40 @@ Module Expr.
     Hypothesis HPRepl:
       forall n arg, P arg -> P (ERepl n arg).
 
-    Definition Expr_ind e : P e.
+    Lemma HNil: forall n e, nth_error [] n = Some e -> P e.
+    Proof. intros; destruct n; inv H. Qed.
+
+    Lemma HCons: forall hd tl,
+        P hd -> (forall n e, nth_error tl n = Some e -> P e) ->
+        forall n e, nth_error (hd :: tl) n = Some e -> P e.
     Proof.
-      induction e using Expr_ind_gen with
-        (P0 := fun args => forall n e, nth_error args n = Some e -> P e).
-      - firstorder.
-      - firstorder.
-      - firstorder.
-      - firstorder.
-      - firstorder.
-      - firstorder.
-      - firstorder.
-      - firstorder.
-      - firstorder.
-      - firstorder.
-      - firstorder.
-      - firstorder.
-      - firstorder.
-      - intros. destruct n; discriminate H.
-      - intros. destruct n.
-        + inv H. apply IHe.
-        + apply (IHe0 _ _ H).
+      intros; destruct n; inv H1.
+      - apply H.
+      - apply (H0 _ _ H3).
     Qed.
-   End Expr_ind.
+
+    Fixpoint Expr_ind e : P e :=
+      match e with
+      | EAtom o => HPAtom o
+      | EBinOp lhs rhs => HPBinOp (Expr_ind lhs) (Expr_ind rhs)
+      | EUnOp arg => HPUnOp (Expr_ind arg)
+      | ECast arg => HPCast (Expr_ind arg)
+      | EComp lhs rhs => HPComp (Expr_ind lhs) (Expr_ind rhs)
+      | ELogic lhs rhs => HPLogic (Expr_ind lhs) (Expr_ind rhs)
+      | EReduction arg => HPReduction (Expr_ind arg)
+      | EShift lhs rhs => HPShift (Expr_ind lhs) (Expr_ind rhs)
+      | EAssign lval arg => HPAssign lval (Expr_ind arg)
+      | EShiftAssign lval arg => HPShiftAssign lval (Expr_ind arg)
+      | ECond arg lhs rhs =>
+          HPCond (Expr_ind arg) (Expr_ind lhs) (Expr_ind rhs)
+      | EConcat args => HPConcat args
+                           ((list_ind _ HNil
+                               (fun hd tl => HCons tl (Expr_ind hd)))
+                              args)
+      | ERepl n arg => HPRepl n (Expr_ind arg)
+      end
+    .
+  End Expr_ind.
 End Expr.
 
 
