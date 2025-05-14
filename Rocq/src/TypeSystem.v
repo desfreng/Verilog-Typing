@@ -5,7 +5,7 @@ From Stdlib Require Import Logic.Decidable.
 From Stdlib Require Export Lia.
 
 From Verilog Require Import Expr.
-From Verilog Require Import Path.
+From Verilog Require Import ExprPath.
 From Verilog Require Import Spec.
 From Verilog Require Import Utils.
 
@@ -13,6 +13,7 @@ Import ListNotations.
 Import Nat.
 
 Import Expr.
+Import ExprPath.
 Import Path.
 Import Spec.
 Import Utils.
@@ -21,7 +22,7 @@ Set Implicit Arguments.
 
 Module TypeSystem.
 
-  Inductive Resizable : Expr -> Type :=
+  Inductive Resizable : Expr -> Set :=
   | ResAtom : forall op, Resizable (EAtom op)
   | ResCast : forall e, Resizable (ECast e)
   | ResComp : forall lhs rhs, Resizable (EComp lhs rhs)
@@ -293,6 +294,14 @@ Module TypeSystem.
       eexists. eapply (CondC H4); eassumption.
   Qed.
 
+  Ltac inv_ts :=
+    match goal with
+    | [ H: _ _ ==> _ -| _ |- _ ] => inv H; try inv_ts
+    | [ H: _ _ <== _ -| _ |- _ ] => inv H; try inv_ts
+    | [ H: Resizable _ |- _ ] => inv H
+    end
+  .
+
   Lemma check_grow_synth_and_synth_inj :
     forall e, (forall t s f1 f2, e ==> t -| f1 -> e <== s -| f2 -> t <= s) /\
            (forall t1 t2 f1 f2, e ==> t1 -| f1 -> e ==> t2 -| f2 -> t1 = t2) /\
@@ -303,13 +312,6 @@ Module TypeSystem.
            (forall t s f1 f2, e <== t -| f1 -> e <== s -| f2 -> t <= s ->
                          forall p, le_option_nat (f1 p) (f2 p)).
   Proof.
-    Ltac _invHyp_inj :=
-      match goal with
-      | [ H: _ _ ==> _ -| _ |- _ ] => inv H; try _invHyp_inj
-      | [ H: _ _ <== _ -| _ |- _ ] => inv H; try _invHyp_inj
-      | [ H: Resizable _ |- _ ] => inv H
-      end
-    .
     Ltac _eq_gen_inj :=
       match goal with
       | [ A: ?e ==> ?t -| _, B: ?e ==> ?s -| _, H: forall _ _ _ _, _ -> _ -> _ = _ |- _ ] =>
@@ -366,8 +368,8 @@ Module TypeSystem.
     .
     induction e using Expr_ind; repeat splitAnd; intros; repeat splitHyp;
       try (destruct p as [|[]]);
-      try (_invHyp_inj; auto; repeat _tac_inj + _invHyp_inj;
-           simpl; try reflexivity; repeat _tac_inj + _invHyp_inj;
+      try (inv_ts; auto; repeat _tac_inj + inv_ts;
+           simpl; try reflexivity; repeat _tac_inj + inv_ts;
            simpl; repeat _eq_gen_inj; auto; _tac_inj).
     - inv H1. assert (Heq: t0 = s0).
       { eapply (concat_synth_inj_t _ H0 H3). Unshelve.
@@ -397,7 +399,6 @@ Module TypeSystem.
       repeat splitHyp. repeat splitAnd. apply (H16 _ _ _ _ H7 H14). subst.
       rewrite (H17 _ _ _ H7 H14). reflexivity.
   Qed.
-
 
   Theorem synth_check_order : forall e t s f1 f2, e ==> t -| f1 -> e <== s -| f2 -> t <= s.
   Proof.
@@ -468,6 +469,94 @@ Module TypeSystem.
     - destruct H0. apply (synth_check_order H H0).
   Qed.
 
+  Lemma func_on_path : forall e,
+      (forall t f, e ==> t -| f -> forall p, IsPath e p <-> exists n, f p = Some n) /\
+        (forall t f, e <== t -| f -> forall p, IsPath e p <-> exists n, f p = Some n).
+  Proof.
+    Ltac _invHyp_fun_path :=
+      match goal with
+      | [ H: IsPath (_ _) _ |- _ ] => inv H
+      | [ H: ex _ |- _ ] => inv H
+      end
+    .
+    Ltac _tac_fun_path :=
+      match goal with
+      | [ H1: _ ==> _ -| _, H2: forall _ _, _ ==> _ -| _ -> _  |- _ ] =>
+        try constructor; rewrite (H2 _ _ H1); eexists; eassumption
+      | [ H1: _ <== _ -| _, H2: forall _ _, _ <== _ -| _ -> _  |- _ ] =>
+          try constructor; rewrite (H2 _ _ H1); eexists; eassumption
+      | [ |- IsPath _ [] ] => constructor
+      end
+    .
+    induction e using Expr_ind; repeat split; intros; repeat splitHyp;
+      inv_ts; repeat _invHyp_fun_path; try (try (eexists; reflexivity); firstorder);
+      try (destruct p as [|[]]; simpl in *; discriminate H || inv H; _tac_fun_path).
+    - destruct (H _ _ H2). repeat gen_nth. simpl. rewrite H7.
+      assert (He: e ==> x0 -| x) by apply (H5 _ _ _ _ H2 H4 H7). firstorder.
+    - destruct p as [|[]]; simpl in *; discriminate H0 || inv H0. constructor.
+      destruct (nth_error fs i) eqn:Hnth. repeat gen_nth. econstructor. eassumption.
+      destruct (H _ _ H0). apply (H5 _ _ _ _ H0 H1) in Hnth. _tac_fun_path.
+      discriminate H2.
+    - destruct (H _ _ H2). repeat gen_nth. simpl. rewrite H8.
+      assert (He: e ==> x0 -| x) by apply (H7 _ _ _ _ H2 H6 H8). firstorder.
+    - destruct p as [|[]]; simpl in *; discriminate H0 || inv H0. constructor.
+      destruct (nth_error fs i) eqn:Hnth. repeat gen_nth. econstructor. eassumption.
+      destruct (H _ _ H0). apply (H7 _ _ _ _ H0 H1) in Hnth. _tac_fun_path.
+      discriminate H2.
+  Qed.
+
+
+  Theorem synth_f_path : forall e t f, e ==> t -| f -> forall p, IsPath e p <-> exists n, f p = Some n.
+  Proof.
+    intros e. destruct (func_on_path e). assumption.
+  Qed.
+
+
+  Theorem check_f_path : forall e t f, e <== t -| f -> forall p, IsPath e p <-> exists n, f p = Some n.
+  Proof.
+    intros e. destruct (func_on_path e). assumption.
+  Qed.
+
+  Lemma f_sub_exp : forall e,
+      (forall t f, e ==> t -| f -> forall p e', e @[p] = Some e' ->
+                                  exists t' f', (e' ==> t' -| f' \/ e' <== t' -| f') /\
+                                             forall k, f (p ++ k) = f' k) /\
+        (forall t f, e <== t -| f -> forall p e', e @[p] = Some e' ->
+                                    exists t' f', (e' ==> t' -| f' \/ e' <== t' -| f') /\
+                                               forall k, f (p ++ k) = f' k).
+  Proof.
+    Ltac _inv_se_f :=
+      match goal with
+      | [ H: _ _ @[ _ ] = _ |- _ ] => inv H
+      end
+    .
+    induction e using Expr_ind; split; intros; repeat splitHyp;
+      destruct p as [|[]]; _inv_se_f; try (exists t0; exists f; split; auto; intros; reflexivity);
+      repeat inv_ts; firstorder.
+    - destruct (nth_error args i) eqn:Hnth; try (discriminate H3). destruct (H _ _ Hnth).
+      clear H. repeat inv_ts. repeat gen_nth. simpl. rewrite H.
+      assert (He: e ==> x0 -| x) by apply (H5 _ _ _ _ Hnth H4 H).
+      firstorder.
+    - destruct (nth_error args i) eqn:Hnth; try (discriminate H3). destruct (H _ _ Hnth).
+      clear H. repeat inv_ts. repeat gen_nth. simpl. rewrite H.
+      assert (He: e ==> x0 -| x) by apply (H7 _ _ _ _ Hnth H2 H).
+      firstorder.
+  Qed.
+
+  Theorem synth_sub_expr : forall e t f p e',
+      e ==> t -| f ->  e @[p] = Some e' ->
+      exists t' f', (e' ==> t' -| f' \/ e' <== t' -| f') /\ forall k, f (p ++ k) = f' k.
+  Proof.
+    intros. destruct (f_sub_exp e). firstorder.
+  Qed.
+
+  Theorem check_sub_expr : forall e t f p e',
+      e <== t -| f ->  e @[p] = Some e' ->
+      exists t' f', (e' ==> t' -| f' \/ e' <== t' -| f') /\ forall k, f (p ++ k) = f' k.
+  Proof.
+    intros. destruct (f_sub_exp e). firstorder.
+  Qed.
+
   Theorem synth_determine : forall e, exists f, e ==> determine e -| f.
   Proof.
     induction e using Expr_ind; repeat existsHyp.
@@ -514,6 +603,17 @@ Module TypeSystem.
     - eexists. eapply ReplS. eassumption. reflexivity.
   Qed.
 
+  Theorem always_synth : forall e, exists t f, e ==> t -| f.
+  Proof.
+    intros. exists (determine e). destruct (synth_determine e) as [f H]. exists f. assumption.
+  Qed.
+
+  Theorem always_check : forall e, exists t f, e <== t -| f.
+  Proof.
+    intros. exists (determine e). destruct (synth_determine e) as [f H].
+    apply (synth_can_check H (le_refl _)).
+  Qed.
+
   Theorem synth_must_be_determine : forall e t f,
       e ==> t -| f -> t = determine e /\ f [] = Some (determine e).
   Proof.
@@ -534,109 +634,22 @@ Module TypeSystem.
     } subst. exists x. assumption.
   Qed.
 
-
-  Lemma func_on_path : forall e,
-      (forall t f, e ==> t -| f -> forall p, IsPath e p <-> exists n, f p = Some n) /\
-        (forall t f, e <== t -| f -> forall p, IsPath e p <-> exists n, f p = Some n).
-  Proof.
-    Ltac _invHyp_fun_path :=
-      match goal with
-      | [ H: IsPath (_ _) _ |- _ ] => inv H
-      | [ H: (_ _) ==> _ -| _ |- _ ] => inv H
-      | [ H: (_ _) <== _ -| _ |- _ ] => inv H
-      | [ H: ex _ |- _ ] => inv H
-      end
-    .
-    Ltac _tac_fun_path :=
-      match goal with
-      | [ H1: _ ==> _ -| _, H2: forall _ _, _ ==> _ -| _ -> _  |- _ ] =>
-        try constructor; rewrite (H2 _ _ H1); eexists; eassumption
-      | [ H1: _ <== _ -| _, H2: forall _ _, _ <== _ -| _ -> _  |- _ ] =>
-          try constructor; rewrite (H2 _ _ H1); eexists; eassumption
-      | [ |- IsPath _ [] ] => constructor
-      end
-    .
-    induction e using Expr_ind; repeat split; intros; repeat splitHyp;
-      repeat _invHyp_fun_path; try (try (eexists; reflexivity); firstorder);
-      try (destruct p as [|[]]; simpl in *; discriminate H || inv H; _tac_fun_path).
-    - destruct (H _ _ H3). repeat gen_nth. simpl. rewrite H7.
-      assert (He: e ==> x0 -| x) by apply (H6 _ _ _ _ H3 H5 H7). firstorder.
-    - destruct p as [|[]]; simpl in *; discriminate H0 || inv H0. constructor.
-      destruct (nth_error fs i) eqn:Hnth. repeat gen_nth. apply (P_ConcatArgs _ _ H0).
-      destruct (H _ _ H0). apply (H5 _ _ _ _ H0 H1) in Hnth. _tac_fun_path.
-      discriminate H2.
-    - destruct (H _ _ H3). repeat gen_nth. simpl. rewrite H9.
-      assert (He: e ==> x0 -| x) by apply (H8 _ _ _ _ H3 H7 H9). firstorder.
-    - destruct p as [|[]]; simpl in *; discriminate H0 || inv H0. constructor.
-      destruct (nth_error fs i) eqn:Hnth. repeat gen_nth. apply (P_ConcatArgs _ _ H0).
-      destruct (H _ _ H0). apply (H7 _ _ _ _ H0 H1) in Hnth. _tac_fun_path.
-      discriminate H3.
-  Qed.
-
-
-  Theorem synth_f_path : forall e t f, e ==> t -| f -> forall p, IsPath e p <-> exists n, f p = Some n.
-  Proof.
-    intros e. destruct (func_on_path e). assumption.
-  Qed.
-
-
-  Theorem check_f_path : forall e t f, e <== t -| f -> forall p, IsPath e p <-> exists n, f p = Some n.
-  Proof.
-    intros e. destruct (func_on_path e). assumption.
-  Qed.
-
-  Lemma f_sub_exp : forall e,
-      (forall t f, e ==> t -| f -> forall p e', e @[p] = Some e' ->
-                                  exists t' f', (e' ==> t' -| f' \/ e' <== t' -| f') /\
-                                             forall k, f (p ++ k) = f' k) /\
-        (forall t f, e <== t -| f -> forall p e', e @[p] = Some e' ->
-                                    exists t' f', (e' ==> t' -| f' \/ e' <== t' -| f') /\
-                                               forall k, f (p ++ k) = f' k).
-  Proof.
-    Ltac _inv_se_f :=
-      match goal with
-      | [ H: _ _ @[ _ ] = _ |- _ ] => inv H
-      end
-    .
-    Ltac _inv_ts_f :=
-      match goal with
-      | [ H: _ _ ==> _ -| _ |- _ ] => inv H
-      | [ H: _ _ <== _ -| _ |- _ ] => inv H
-      | [ H: Resizable (_ _) |- _ ] => inv H
-      end
-    .
-    induction e using Expr_ind; split; intros; repeat splitHyp;
-      destruct p as [|[]]; _inv_se_f; try (exists t0; exists f; split; auto; intros; reflexivity);
-      repeat _inv_ts_f; firstorder.
-    - destruct (nth_error args i) eqn:Hnth; try (discriminate H3). destruct (H _ _ Hnth).
-      clear H. repeat _inv_ts_f. repeat gen_nth. simpl. rewrite H.
-      assert (He: e ==> x0 -| x) by apply (H5 _ _ _ _ Hnth H4 H).
-      firstorder.
-    - destruct (nth_error args i) eqn:Hnth; try (discriminate H3). destruct (H _ _ Hnth).
-      clear H. repeat _inv_ts_f. repeat gen_nth. simpl. rewrite H.
-      assert (He: e ==> x0 -| x) by apply (H7 _ _ _ _ Hnth H2 H).
-      firstorder.
-  Qed.
-
-  Theorem synth_sub_expr : forall e t f p e',
-      e ==> t -| f ->  e @[p] = Some e' ->
-      exists t' f', (e' ==> t' -| f' \/ e' <== t' -| f') /\ forall k, f (p ++ k) = f' k.
-  Proof.
-    intros. destruct (f_sub_exp e). firstorder.
-  Qed.
-
-  Theorem check_sub_expr : forall e t f p e',
-      e <== t -| f ->  e @[p] = Some e' ->
-      exists t' f', (e' ==> t' -| f' \/ e' <== t' -| f') /\ forall k, f (p ++ k) = f' k.
-  Proof.
-    intros. destruct (f_sub_exp e). firstorder.
-  Qed.
-
   Lemma synth_check_determine_order : forall e1 e2 t1 t2 f1 f2,
       e1 ==> t1 -| f1 -> e2 <== t2 -| f2 -> t2 <= t1 -> determine e2 <= determine e1.
   Proof.
-    intros. destruct (synth_must_be_determine H). subst. destruct (synth_determine e2).
+    intros. destruct (synth_must_be_determine H) as [Ht Hf].
+    subst. destruct (synth_determine e2).
     apply (synth_check_order H2) in H0. apply (le_trans _ _ _ H0 H1).
+  Qed.
+
+  Lemma synth_and_order : forall e f t,
+      e <== t -| f -> t <= determine e -> determine e = t.
+  Proof.
+    intros.
+    apply le_antisymm.
+    - destruct (always_synth e) as [t1 [f1 H1]]. destruct (synth_must_be_determine H1).
+      subst. apply (synth_check_order H1 H).
+    - assumption.
   Qed.
 
 End TypeSystem.
