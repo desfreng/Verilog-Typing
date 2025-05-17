@@ -112,7 +112,7 @@ Module ExprPath.
     intros. destruct e; reflexivity.
   Qed.
 
-  Lemma sub_exp_chunk : forall p q e g,
+  Lemma sub_expr_chunk : forall p q e g,
       (exists f, e @[p] = Some f /\ f @[q] = Some g) <-> e @[p ++ q] = Some g.
   Proof.
     induction p; split; intros.
@@ -131,12 +131,19 @@ Module ExprPath.
       IsPath e (p ++ c) <-> (exists f, e @[p] = Some f /\ IsPath f c).
   Proof.
     split; intros.
-    - destruct (IsPath_is_sub_expr _ _ H) as [g H1]. apply sub_exp_chunk in H1.
+    - destruct (IsPath_is_sub_expr _ _ H) as [g H1]. apply sub_expr_chunk in H1.
       destruct H1 as [f [H2 H3]]. exists f. split. assumption. apply IsPath_sub_expr_iff.
       exists g. assumption.
     - destruct H as [f [H1 H2]]. apply IsPath_sub_expr_iff.
       apply IsPath_sub_expr_iff in H2. destruct H2 as [g H2]. exists g.
-      apply sub_exp_chunk. exists f. intuition.
+      apply sub_expr_chunk. exists f. intuition.
   Qed.
 
+  Theorem IsPath_dec : forall e p, {IsPath e p} + {~(IsPath e p)}.
+  Proof.
+    intros. destruct (e @[p]) eqn:Hep.
+    - left. apply (sub_expr_valid _ _ _ Hep).
+    - right. unfold not. intros. rewrite IsPath_sub_expr_iff in H. destruct H.
+      congruence.
+  Qed.
 End ExprPath.

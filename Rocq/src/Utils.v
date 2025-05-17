@@ -11,6 +11,14 @@ Module Utils.
 
   Ltac inv H := inversion H; clear H; subst.
 
+  Ltac antisym :=
+    match goal with
+    | [ H: ?x <= ?y, F: ?y <= ?x |- _ ] =>
+        let nH := fresh in assert (nH: x = y) by apply (le_antisymm _ _ H F);
+                           clear H; clear F
+    end
+  .
+
   Ltac splitHyp :=
     match goal with
     | [ H: _ /\ _ |- _ ] => destruct H
@@ -202,4 +210,27 @@ Module Utils.
                                destruct HnewTh; clear Hlen
     end
   .
+
+  Lemma option_eq_dec : forall (T: Type) (x y: option T),
+      (forall x y: T, {x = y} + {x <> y}) -> {x = y} + {x <> y}.
+  Proof.
+    intros. destruct x; destruct y; try (destruct (X t0 t1)); subst;
+      left + right; congruence.
+  Qed.
 End Utils.
+
+Module Learn.
+  (* Taken from coq-tricks *)
+  Inductive Learnt {P:Prop} :=
+  | AlreadyLearnt (H:P).
+
+  Local Ltac learn_fact H :=
+    let P := type of H in
+    lazymatch goal with
+    | [ Hlearnt: @Learnt P |- _ ] =>
+      fail 0 "already knew" P "through" Hlearnt
+    | _ => pose proof H; pose proof (AlreadyLearnt H)
+    end.
+
+  Tactic Notation "learn" constr(H) := learn_fact H.
+End Learn.

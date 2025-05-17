@@ -26,4 +26,11 @@ Module Path.
       rewrite Hp. apply H0. apply H1. assumption.
     - apply list_sep_None in Hp. subst. assumption.
   Qed.
+
+  Theorem path_item_eq_dec : forall (a b: PathItem), {a = b} + {a <> b}.
+  Proof. decide equality; decide equality. Qed.
+
+  Theorem path_eq_dec : forall (a b: path), {a = b} + {a <> b}.
+  Proof. decide equality. apply path_item_eq_dec. Qed.
+
 End Path.

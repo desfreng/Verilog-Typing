@@ -113,7 +113,7 @@ Module TypedExprPath.
     intros. destruct e; reflexivity.
   Qed.
 
-  Lemma sub_exp_chunk : forall p q e g,
+  Lemma sub_typed_expr_chunk : forall p q e g,
       (exists f, e @@[p] = Some f /\ f @@[q] = Some g) <-> e @@[p ++ q] = Some g.
   Proof.
     induction p; split; intros.
@@ -133,12 +133,19 @@ Module TypedExprPath.
   Proof.
     split; intros.
     - destruct (IsTypedPath_is_sub_typed_expr _ _ H) as [g H1].
-      apply sub_exp_chunk in H1. destruct H1 as [f [H2 H3]].
+      apply sub_typed_expr_chunk in H1. destruct H1 as [f [H2 H3]].
       exists f. split. assumption. apply IsTypedPath_sub_typed_expr_iff.
       exists g. assumption.
     - destruct H as [f [H1 H2]]. apply IsTypedPath_sub_typed_expr_iff.
       apply IsTypedPath_sub_typed_expr_iff in H2. destruct H2 as [g H2]. exists g.
-      apply sub_exp_chunk. exists f. intuition.
+      apply sub_typed_expr_chunk. exists f. intuition.
   Qed.
 
+  Theorem IsTypedPath_dec : forall e p, {IsTypedPath e p} + {~(IsTypedPath e p)}.
+  Proof.
+    intros. destruct (e @@[p]) eqn:Hep.
+    - left. apply (sub_typed_expr_valid _ _ _ Hep).
+    - right. unfold not. intros. rewrite IsTypedPath_sub_typed_expr_iff in H. destruct H.
+      congruence.
+  Qed.
 End TypedExprPath.

@@ -18,8 +18,6 @@ Import Path.
 Import Spec.
 Import Utils.
 
-Set Implicit Arguments.
-
 Module TypeSystem.
 
   Inductive Resizable : Expr -> Set :=
@@ -95,76 +93,92 @@ Module TypeSystem.
   Reserved Notation "e '<==' t '-|' f" (at level 70).
 
   Inductive synth : Expr -> nat -> (path -> option nat) -> Prop :=
-  | AtomS : forall op, EAtom op ==> op -| Initial op
+  | AtomS : forall op f,
+      f = Initial op ->
+      EAtom op ==> op -| f
 
-  | LBinOpS : forall a b t fa fb,
+  | LBinOpS : forall a b t f fa fb,
       a ==> t -| fa ->
       b <== t -| fb ->
-      EBinOp a b ==> t -| Binary t fa fb
+      f = Binary t fa fb ->
+      EBinOp a b ==> t -| f
 
-  | RBinOpS : forall a b t fa fb,
+  | RBinOpS : forall a b t f fa fb,
       a <== t -| fa ->
       b ==> t -| fb ->
-      EBinOp a b ==> t -| Binary t fa fb
+      f = Binary t fa fb ->
+      EBinOp a b ==> t -| f
 
-  | UnOpS : forall e t f,
-      e ==> t -| f ->
-      EUnOp e ==> t -| Unary t f
+  | UnOpS : forall e t f fe,
+      e ==> t -| fe ->
+      f = Unary t fe ->
+      EUnOp e ==> t -| f
 
-  | CastS : forall e t f,
-      e ==> t -| f ->
-      ECast e ==> t -| Unary t f
+  | CastS : forall e t f fe,
+      e ==> t -| fe ->
+      f = Unary t fe ->
+      ECast e ==> t -| f
 
-  | LCompS : forall a b t fa fb,
+  | LCompS : forall a b t f fa fb,
       a ==> t -| fa ->
       b <== t -| fb ->
-      EComp a b ==> 1 -| Binary 1 fa fb
+      f = Binary 1 fa fb ->
+      EComp a b ==> 1 -| f
 
-  | RCompS : forall a b t fa fb,
+  | RCompS : forall a b t f fa fb,
       a <== t -| fa ->
       b ==> t -| fb ->
-      EComp a b ==> 1 -| Binary 1 fa fb
+      f = Binary 1 fa fb ->
+      EComp a b ==> 1 -| f
 
-  | LogicS : forall a b ta tb fa fb,
+  | LogicS : forall a b f ta tb fa fb,
       a ==> ta -| fa ->
       b ==> tb -| fb ->
-      ELogic a b ==> 1 -| Binary 1 fa fb
+      f = Binary 1 fa fb ->
+      ELogic a b ==> 1 -| f
 
-  | RedS : forall e t f,
-      e ==> t -| f ->
-      EReduction e ==> 1 -| Unary 1 f
+  | RedS : forall e t f fe,
+      e ==> t -| fe ->
+      f = Unary 1 fe ->
+      EReduction e ==> 1 -| f
 
-  | ShiftS : forall a b t tb fa fb,
+  | ShiftS : forall a b t f tb fa fb,
       a ==> t -| fa ->
       b ==> tb -| fb ->
-      EShift a b ==> t -| Binary t fa fb
+      f = Binary t fa fb ->
+      EShift a b ==> t -| f
 
-  | LAssignS : forall lval e f,
-      e <== lval -| f ->
-      EAssign lval e ==> lval -| Unary lval f
+  | LAssignS : forall lval e f fe,
+      e <== lval -| fe ->
+      f = Unary lval fe ->
+      EAssign lval e ==> lval -| f
 
-  | RAssignS : forall lval e te f,
-      e ==> te -| f ->
+  | RAssignS : forall lval e f te fe,
+      e ==> te -| fe ->
       lval < te ->
-      EAssign lval e ==> lval -| Unary lval f
+      f = Unary lval fe ->
+      EAssign lval e ==> lval -| f
 
-  | ShiftAssignS : forall lval e te f,
-      e ==> te -| f ->
-      EShiftAssign lval e ==> lval -| Unary lval f
+  | ShiftAssignS : forall lval e f te fe,
+      e ==> te -| fe ->
+      f = Unary lval fe ->
+      EShiftAssign lval e ==> lval -| f
 
-  | LCondS : forall e a b t te fe fa fb,
+  | LCondS : forall e a b t f te fe fa fb,
       e ==> te -| fe ->
       a ==> t -| fa ->
       b <== t -| fb ->
-      ECond e a b ==> t -| Ternary t fe fa fb
+      f = Ternary t fe fa fb ->
+      ECond e a b ==> t -| f
 
-  | RCondS : forall e a b t te fe fa fb,
+  | RCondS : forall e a b t f te fe fa fb,
       e ==> te -| fe ->
       a <== t -| fa ->
       b ==> t -| fb ->
-      ECond e a b ==> t -| Ternary t fe fa fb
+      f = Ternary t fe fa fb ->
+      ECond e a b ==> t -| f
 
-  | ConcatS : forall args ts t fs,
+  | ConcatS : forall args t f ts fs,
       length args = length ts ->
       length args = length fs ->
       (forall n e te fe, nth_error args n = Some e ->
@@ -172,45 +186,59 @@ Module TypeSystem.
                     nth_error fs n = Some fe ->
                     e ==> te -| fe) ->
       t = sum ts ->
-      EConcat args ==> t -| Narry t fs
+      f = Narry t fs ->
+      EConcat args ==> t -| f
 
-  | ReplS : forall i e te t f,
-      e ==> te -| f ->
+  | ReplS : forall i e t f te fe,
+      e ==> te -| fe ->
       t = i * te ->
-      ERepl i e ==> t -| Unary t f
+      f = Unary t fe ->
+      ERepl i e ==> t -| f
 
   where "e '==>' n '-|' f" := (synth e n f)
 
   with check : Expr -> nat -> (path -> option nat) -> Prop :=
-  | ResizeC : forall e s t f,
+  | ResizeC : forall e t f s fe,
       Resizable e ->
-      e ==> s -| f ->
+      e ==> s -| fe ->
       s <= t ->
-      e <== t -| ReplaceRoot t f
+      f = ReplaceRoot t fe ->
+      e <== t -| f
 
-  | BinOpC : forall a b t fa fb,
+  | BinOpC : forall a b t f fa fb,
       a <== t -| fa ->
       b <== t -| fb ->
-      EBinOp a b <== t -| Binary t fa fb
+      f = Binary t fa fb ->
+      EBinOp a b <== t -| f
 
-  | UnOpC : forall e t f,
-      e <== t -| f ->
-      EUnOp e <== t -| Unary t f
+  | UnOpC : forall e t f fe,
+      e <== t -| fe ->
+      f = Unary t fe ->
+      EUnOp e <== t -| f
 
-  | ShiftC : forall a b t tb fa fb,
+  | ShiftC : forall a b t f tb fa fb,
       a <== t -| fa ->
       b ==> tb -| fb ->
-      EShift a b <== t -| Binary t fa fb
+      f = Binary t fa fb ->
+      EShift a b <== t -| f
 
-  | CondC : forall e a b t te fe fa fb,
+  | CondC : forall e a b t f te fe fa fb,
       e ==> te -| fe ->
       a <== t -| fa ->
       b <== t -| fb ->
-      ECond e a b <== t -| Ternary t fe fa fb
+      f = Ternary t fe fa fb ->
+      ECond e a b <== t -| f
 
   where "e '<==' n '-|' f" := (check e n f)
   .
 
+  Ltac inv_ts :=
+    match goal with
+    | [ H: _ _ ==> _ -| _ |- _ ] => inv H; try inv_ts
+    | [ H: _ _ <== _ -| _ |- _ ] => inv H; try inv_ts
+    | [ H: Resizable _ |- _ ] => inv H
+    end
+  .
 
   Lemma synth_root : forall e t f, e ==> t -| f -> f [] = Some t.
   Proof.
@@ -281,26 +309,21 @@ Module TypeSystem.
     Ltac _check_can_grow_tac :=
       match goal with
       | [ HRes: Resizable _, H: _ ==> ?x -| _, Hle: ?x <= ?y |- ?e <== ?z -| _ ] =>
-          apply (ResizeC HRes H); apply (le_trans x y z); assumption
+          apply (ResizeC _ _ _ _ _ HRes H); try reflexivity;
+          apply (le_trans x y z); eassumption
       | [ H: _ <== _ -| _ |- ex _ ] => inv H; eexists; _check_can_grow_tac
       end
     .
     induction e using Expr_ind; intros; try _check_can_grow_tac.
     - inv H. inv H1. edestruct IHe1; edestruct IHe2; try eassumption.
-      eexists. constructor; eassumption.
-    - inv H. inv H1. edestruct IHe; try eassumption. eexists. constructor. eassumption.
-    - inv H. inv H1. edestruct IHe1; try eassumption. eexists. apply (ShiftC H H6).
+      eexists. econstructor; eassumption || reflexivity.
+    - inv H. inv H1. edestruct IHe; try eassumption. eexists.
+      econstructor; eassumption || reflexivity.
+    - inv H. inv H1. edestruct IHe1; try eassumption. eexists.
+      apply (ShiftC _ _ _ _ _ _ _ H H4). reflexivity.
     - inv H. inv H1. edestruct IHe2; edestruct IHe3; try eassumption.
-      eexists. eapply (CondC H4); eassumption.
+      eexists. eapply (CondC _ _ _ _ _ _ _ _ _ H4); eassumption || reflexivity.
   Qed.
-
-  Ltac inv_ts :=
-    match goal with
-    | [ H: _ _ ==> _ -| _ |- _ ] => inv H; try inv_ts
-    | [ H: _ _ <== _ -| _ |- _ ] => inv H; try inv_ts
-    | [ H: Resizable _ |- _ ] => inv H
-    end
-  .
 
   Lemma check_grow_synth_and_synth_inj :
     forall e, (forall t s f1 f2, e ==> t -| f1 -> e <== s -| f2 -> t <= s) /\
@@ -368,33 +391,33 @@ Module TypeSystem.
     .
     induction e using Expr_ind; repeat splitAnd; intros; repeat splitHyp;
       try (destruct p as [|[]]);
-      try (inv_ts; auto; repeat _tac_inj + inv_ts;
-           simpl; try reflexivity; repeat _tac_inj + inv_ts;
-           simpl; repeat _eq_gen_inj; auto; _tac_inj).
+      try (inv_ts; simpl; repeat _eq_gen_inj; auto; try reflexivity;
+           repeat _tac_inj; fail).
     - inv H1. assert (Heq: t0 = s0).
-      { eapply (concat_synth_inj_t _ H0 H3). Unshelve.
+      { eapply (concat_synth_inj_t _ _ _ _ _ _ H0 H3). Unshelve.
         intros. destruct (H _ _ H1). repeat splitHyp. apply (H8 _ _ _ _ H5 H6).
       } subst. assumption.
-    - eapply (concat_synth_inj_t _ H1 H2). Unshelve.
+    - eapply (concat_synth_inj_t _ _ _ _ _ _ H1 H2). Unshelve.
       intros. destruct (H _ _ H3). repeat splitHyp. apply (H7 _ _ _ _ H4 H5).
-    - eapply (concat_synth_inj_f _ H2 H3). Unshelve.
+    - eapply (concat_synth_inj_f _ _ _ _ _ _ H2 H3). Unshelve.
       intros. destruct (H _ _ H4). repeat splitHyp. splitAnd. apply (H8 _ _ _ _ H5 H6).
       intros. subst. apply (H9 _ _ _ H5 H6).
-    - inv H3. inv H4. assert (Heq: forall p, f p = f0 p).
-      { eapply (concat_synth_inj_f _ H6 H8). Unshelve.
+    - inv H3. inv H4. assert (Heq: forall p, fe p = fe0 p).
+      { eapply (concat_synth_inj_f _ _ _ _ _ _ H6 H8). Unshelve.
         intros. destruct (H _ _ H4). repeat splitHyp. splitAnd.
         apply (H13 _ _ _ _ H10 H11). intros. subst. apply (H14 _ _ _ H10 H11).
       } simpl. apply Heq.
-    - inv H5. assert (Heq: forall p, f1 p = f p).
-      { eapply (concat_synth_inj_f _ H4 H7). Unshelve.
+    - inv H5. assert (Heq: forall p, f1 p = fe p).
+      { eapply (concat_synth_inj_f _ _ _ _ _ _ H4 H7). Unshelve.
         intros. destruct (H _ _ H5). repeat splitHyp. splitAnd.
         apply (H12 _ _ _ _ H9 H10). intros. subst. apply (H13 _ _ _ H9 H10).
       } simpl. apply Heq.
-    - inv H6. _eq_gen_inj. simpl. rewrite (synth_root H5). trivial.
-    - inv H6. _eq_gen_inj. simpl. eapply (concat_synth_order_f _ H5 H8).
+    - inv H6. _eq_gen_inj. simpl. rewrite (synth_root _ _ _ H5). trivial.
+    - inv H6. _eq_gen_inj. simpl. eapply (concat_synth_order_f _ _ _ _ _ _ H5 H8).
       Unshelve. intros. destruct (H _ _ H1). repeat splitHyp. repeat splitAnd.
       apply (H12 _ _ _ _ H6 H10). subst. rewrite (H13 _ _ _ H6 H10). reflexivity.
-    - inv H6. inv H7. _eq_gen_inj. simpl. eapply (concat_synth_order_f _ H10 H12).
+    - inv H6. inv H7. _eq_gen_inj. simpl.
+      eapply (concat_synth_order_f _ _ _ _ _ _ H10 H12).
       Unshelve. intros. destruct (H _ _ H1).
       repeat splitHyp. repeat splitAnd. apply (H16 _ _ _ _ H7 H14). subst.
       rewrite (H17 _ _ _ H7 H14). reflexivity.
@@ -446,27 +469,30 @@ Module TypeSystem.
 
   Lemma synth_can_check : forall e t s f, e ==> t -| f -> t <= s -> exists g, e <== s -| g.
   Proof.
-    induction e using Expr_ind; intros; try (eexists; apply ResizeC with (s := t0);
-                                             [constructor | eassumption | assumption]).
+    induction e using Expr_ind; intros;
+      try (eexists; eapply ResizeC with (s := t0);
+           [constructor | eassumption | assumption | reflexivity]).
     - inv H.
-      + destruct (IHe1 _ _ _ H3 H0). destruct (check_can_grow H6 H0).
-        eexists. apply BinOpC; eassumption.
-      + destruct (IHe2 _ _ _ H6 H0). destruct (check_can_grow H3 H0).
-        eexists. apply BinOpC; eassumption.
-    - inv H. destruct (IHe _ _ _ H2 H0). eexists. constructor. eassumption.
-    - inv H. destruct (IHe1 _ _ _ H3 H0). eexists. apply (ShiftC H H6).
+      + destruct (IHe1 _ _ _ H3 H0). destruct (check_can_grow _ _ _ H4 _ H0).
+        eexists. eapply BinOpC; eassumption || reflexivity.
+      + destruct (IHe2 _ _ _ H4 H0). destruct (check_can_grow _ _ _ H3 _ H0).
+        eexists. eapply BinOpC; eassumption || reflexivity.
+    - inv H. destruct (IHe _ _ _ H2 H0). eexists.
+      econstructor; eassumption || reflexivity.
+    - inv H. destruct (IHe1 _ _ _ H3 H0). eexists. apply (ShiftC _ _ _ _ _ _ _ H H4).
+      reflexivity.
     - inv H.
-      + destruct (IHe2 _ _ _ H7 H0). destruct (check_can_grow H8 H0).
-        eexists. apply (CondC H4 H H1).
-      + destruct (IHe3 _ _ _ H8 H0). destruct (check_can_grow H7 H0).
-        eexists. apply (CondC H4 H1 H).
+      + destruct (IHe2 _ _ _ H5 H0). destruct (check_can_grow _ _ _ H8 _ H0).
+        eexists. apply (CondC _ _ _ _ _ _ _ _ _ H4 H H1). reflexivity.
+      + destruct (IHe3 _ _ _ H8 H0). destruct (check_can_grow _ _ _ H5 _ H0).
+        eexists. apply (CondC _ _ _ _ _ _ _ _ _ H4 H1 H). reflexivity.
   Qed.
 
   Theorem synth_check : forall e t f, e ==> t -| f -> forall s, t <= s <-> exists g, e <== s -| g.
   Proof.
     split; intros.
-    - apply (synth_can_check H H0).
-    - destruct H0. apply (synth_check_order H H0).
+    - apply (synth_can_check _ _ _ _ H H0).
+    - destruct H0. apply (synth_check_order _ _ _ _ _ H H0).
   Qed.
 
   Lemma func_on_path : forall e,
@@ -560,29 +586,32 @@ Module TypeSystem.
   Theorem synth_determine : forall e, exists f, e ==> determine e -| f.
   Proof.
     induction e using Expr_ind; repeat existsHyp.
-    - eexists. constructor.
+    - eexists. constructor. reflexivity.
     - destruct (max_dec_bis (determine e1) (determine e2)) as [[H1 H2]|[H1 H2]].
-      + destruct (synth_can_check H H2). eexists. simpl. rewrite H1.
-        constructor; eassumption.
-      + destruct (synth_can_check H0 H2). eexists. simpl. rewrite H1.
-        constructor; eassumption.
-    - eexists. constructor. eassumption.
-    - eexists. constructor. eassumption.
+      + destruct (synth_can_check _ _ _ _ H H2). eexists. simpl. rewrite H1.
+        eapply LBinOpS; eassumption || reflexivity.
+      + destruct (synth_can_check _ _ _ _ H0 H2). eexists. simpl. rewrite H1.
+        eapply RBinOpS; eassumption || reflexivity.
+    - eexists. econstructor; eassumption || reflexivity.
+    - eexists. econstructor; eassumption || reflexivity.
     - destruct (max_dec_bis (determine e1) (determine e2)) as [[H1 H2]|[H1 H2]].
-      + destruct (synth_can_check H H2). eexists. simpl. eapply LCompS; eassumption.
-      + destruct (synth_can_check H0 H2). eexists. simpl. eapply RCompS; eassumption.
-    - eexists. eapply LogicS; eassumption.
-    - eexists. eapply RedS; eassumption.
-    - eexists. eapply ShiftS; eassumption.
+      + destruct (synth_can_check _ _ _ _ H H2). eexists. simpl.
+        eapply LCompS; eassumption || reflexivity.
+      + destruct (synth_can_check _ _ _ _ H0 H2). eexists. simpl.
+        eapply RCompS; eassumption || reflexivity.
+    - eexists. eapply LogicS; eassumption || reflexivity.
+    - eexists. eapply RedS; eassumption || reflexivity.
+    - eexists. eapply ShiftS; eassumption || reflexivity.
     - destruct (le_gt_dec (determine e) op).
-      + destruct (synth_can_check H l). eexists. eapply LAssignS; eassumption.
-      + eexists. eapply RAssignS; eassumption.
-    - eexists. eapply ShiftAssignS; eassumption.
+      + destruct (synth_can_check _ _ _ _ H l). eexists.
+        eapply LAssignS; eassumption || reflexivity.
+      + eexists. eapply RAssignS; eassumption || reflexivity.
+    - eexists. eapply ShiftAssignS; eassumption || reflexivity.
     - destruct (max_dec_bis (determine e2) (determine e3)) as [[H2 H3]|[H2 H3]].
-      + destruct (synth_can_check H H3). eexists. simpl. rewrite H2.
-        eapply LCondS; eassumption.
-      + destruct (synth_can_check H0 H3). eexists. simpl. rewrite H2.
-        eapply RCondS; eassumption.
+      + destruct (synth_can_check _ _ _ _ H H3). eexists. simpl. rewrite H2.
+        eapply LCondS; eassumption || reflexivity.
+      + destruct (synth_can_check _ _ _ _ H0 H3). eexists. simpl. rewrite H2.
+        eapply RCondS; eassumption || reflexivity.
     - assert (Hfs: exists fs, length fs = length args /\ forall n e t f,
                    nth_error args n = Some e ->
                    nth_error (map determine args) n = Some t ->
@@ -595,12 +624,13 @@ Module TypeSystem.
           -- intros. destruct n. inv H3. inv H4. inv H5. assumption.
              simpl in *. firstorder.
       + destruct Hfs as [fs [H1 H2]]. eexists.
-        apply ConcatS with (ts := map determine args).
+        eapply ConcatS with (ts := map determine args).
         * symmetry. apply length_map.
         * symmetry. eassumption.
         * assumption.
         * reflexivity.
-    - eexists. eapply ReplS. eassumption. reflexivity.
+        * reflexivity.
+    - eexists. eapply ReplS; eassumption || reflexivity.
   Qed.
 
   Theorem always_synth : forall e, exists t f, e ==> t -| f.
@@ -611,15 +641,15 @@ Module TypeSystem.
   Theorem always_check : forall e, exists t f, e <== t -| f.
   Proof.
     intros. exists (determine e). destruct (synth_determine e) as [f H].
-    apply (synth_can_check H (le_refl _)).
+    apply (synth_can_check _ _ _ _ H (le_refl _)).
   Qed.
 
   Theorem synth_must_be_determine : forall e t f,
       e ==> t -| f -> t = determine e /\ f [] = Some (determine e).
   Proof.
     intros. splitAnd.
-    - destruct (synth_determine e). apply (synth_inj H H0).
-    - rewrite (synth_root H). subst. reflexivity.
+    - destruct (synth_determine e). apply (synth_inj _ _ _ _ _ H H0).
+    - rewrite (synth_root _ _ _ H). subst. reflexivity.
   Qed.
 
   Definition P e s := forall t, s <= t -> exists g, e <== t -| g.
@@ -629,17 +659,17 @@ Module TypeSystem.
     unfold P. intros. destruct synth_determine with (e := e) as [x Hx].
     assert (Heq: s = determine e).
     { apply le_antisymm.
-      - apply H0. intros. apply (synth_can_check Hx H1).
-      - destruct (H s). reflexivity. apply (synth_check_order Hx H1).
+      - apply H0. intros. apply (synth_can_check _ _ _ _ Hx H1).
+      - destruct (H s). reflexivity. apply (synth_check_order _ _ _ _ _ Hx H1).
     } subst. exists x. assumption.
   Qed.
 
   Lemma synth_check_determine_order : forall e1 e2 t1 t2 f1 f2,
       e1 ==> t1 -| f1 -> e2 <== t2 -| f2 -> t2 <= t1 -> determine e2 <= determine e1.
   Proof.
-    intros. destruct (synth_must_be_determine H) as [Ht Hf].
+    intros. destruct (synth_must_be_determine _ _ _ H) as [Ht Hf].
     subst. destruct (synth_determine e2).
-    apply (synth_check_order H2) in H0. apply (le_trans _ _ _ H0 H1).
+    apply (synth_check_order _ _ _ _ _ H2) in H0. apply (le_trans _ _ _ H0 H1).
   Qed.
 
   Lemma synth_and_order : forall e f t,
@@ -647,8 +677,9 @@ Module TypeSystem.
   Proof.
     intros.
     apply le_antisymm.
-    - destruct (always_synth e) as [t1 [f1 H1]]. destruct (synth_must_be_determine H1).
-      subst. apply (synth_check_order H1 H).
+    - destruct (always_synth e) as [t1 [f1 H1]].
+      destruct (synth_must_be_determine _ _ _ H1).
+      subst. apply (synth_check_order _ _ _ _ _ H1 H).
     - assumption.
   Qed.
 

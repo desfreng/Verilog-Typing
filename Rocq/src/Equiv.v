@@ -22,14 +22,6 @@ Module Equiv.
   Definition agree e f1 (f2: path -> option nat) :=
     forall p, IsPath e p -> f2 p = Some (f1 p).
 
-  Ltac antisym :=
-    match goal with
-    | [ H: ?x <= ?y, F: ?y <= ?x |- _ ] =>
-        let nH := fresh in assert (nH: x = y) by apply (le_antisymm _ _ H F);
-                           clear H; clear F
-    end
-  .
-
   Ltac _gen_rel :=
     match goal with
     | [ H: _ = max ?n ?m |- _ ] =>
@@ -40,17 +32,17 @@ Module Equiv.
                            rewrite nH in *; clear nH; try _gen_rel
     | [ H: ?e1 ==> ?t -| _, F: ?e2 <== ?t -| _ |- _ ] =>
         let nH := fresh in assert (nH: determine e2 <= determine e1) by
-          apply (synth_check_determine_order H F (le_refl _)); try antisym
+          apply (synth_check_determine_order _ _ _ _ _ _ H F (le_refl _)); try antisym
     | [ H: ?e <== ?t -| _, F: ?t <= determine ?e |- _ ] =>
         let nH := fresh in assert (nH: determine e = t) by
-          apply (synth_and_order H F)
+          apply (synth_and_order _ _ _ H F)
     end
   .
 
   Ltac _ts_gen :=
     match goal with
     | [ H: _ ==> ?t -| ?f |- _ ] =>
-        destruct (synth_must_be_determine H); subst; clear H
+        destruct (synth_must_be_determine _ _ _ H); subst; clear H
     | [ H: _ <== ?t -| ?f |-  _ ] =>
         apply check_root in H
     | [ H: forall _ _ _ _, _ -> _ -> _ -> _ ==> _ -| _,
@@ -67,9 +59,9 @@ Module Equiv.
   Proof.
     intros. destruct (always_synth e) as [t [f Hs]]. exists f. split.
     - subst. unfold agree. intros. prop_split. induction p using path_ind.
-      + repeat prop_gen_eq; try _gen_rel; repeat _ts_gen; congruence.
+      + repeat prop_gen_eq; try _gen_rel; repeat _ts_gen. congruence.
       + apply IsPath_chunk in H0. destruct H0 as [e' [Hse Hp]].
-        destruct (synth_sub_expr _ Hs Hse) as [t' [f' [[H3|H3] H4]]];
+        destruct (synth_sub_expr _ _ _ _ _ Hs Hse) as [t' [f' [[H3|H3] H4]]];
         rewrite H4; specialize (IHp (sub_expr_valid _ _ _ Hse));
         specialize (H4 []); rewrite app_nil_r in H4; simpl in H4; rewrite H4 in IHp;
           destruct e'; inv Hp; inv_ts; simpl in *; repeat prop_gen_eq; try _gen_rel;
@@ -97,13 +89,14 @@ Module Equiv.
     Ltac _crunch_ts_imp_spec :=
       match goal with
       | [ H: _ ==> _ -| _, F: _ @[_] = Some _ |- _ ] =>
-          destruct (synth_sub_expr _ H F) as [t' [f' [[H3|H3] H4]]];
+          destruct (synth_sub_expr _ _ _ _ _ H F) as [t' [f' [[H3|H3] H4]]];
           repeat _ts_spec; inv_ts; simpl in *; repeat gen_nth; try _gen_rel;
           repeat _ts_gen; congruence || lia
       end
     .
     unfold agree. autounfold with Spec. repeat split; intros; try _crunch_ts_imp_spec.
-    destruct (synth_must_be_determine H0); specialize (H [] (P_Empty _)); congruence.
+    destruct (synth_must_be_determine _ _ _ H0); specialize (H [] (P_Empty _));
+      congruence.
   Qed.
 
   Theorem ts_equiv_spec : forall e f1,

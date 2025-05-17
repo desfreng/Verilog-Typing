@@ -4,8 +4,6 @@ From Verilog Require Import Utils.
 Import ListNotations.
 Import Utils.
 
-Set Implicit Arguments.
-
 Module Expr.
 
   Unset Elimination Schemes.
@@ -28,8 +26,20 @@ Module Expr.
 
   Set Elimination Schemes.
 
-  Section Expr_ind.
-    Variable P : Expr -> Prop.
+  Lemma HNil: forall (P: Expr -> Type) n e, nth_error [] n = Some e -> P e.
+  Proof. intros; rewrite nth_error_nil in H; inv H. Qed.
+
+  Lemma HCons: forall (P: Expr -> Type) hd tl,
+      P hd -> (forall n e, nth_error tl n = Some e -> P e) ->
+      forall n e, nth_error (hd :: tl) n = Some e -> P e.
+  Proof.
+    intros; destruct n; inv H.
+    - apply X.
+    - apply (X0 _ _ H1).
+  Qed.
+
+  Section Expr_rect.
+    Variable P : Expr -> Type.
 
     Hypothesis HPAtom:
       forall o, P (EAtom o).
@@ -70,42 +80,47 @@ Module Expr.
     Hypothesis HPRepl:
       forall n arg, P arg -> P (ERepl n arg).
 
-    Lemma HNil: forall n e, nth_error [] n = Some e -> P e.
-    Proof. intros; destruct n; inv H. Qed.
-
-    Lemma HCons: forall hd tl,
-        P hd -> (forall n e, nth_error tl n = Some e -> P e) ->
-        forall n e, nth_error (hd :: tl) n = Some e -> P e.
-    Proof.
-      intros; destruct n; inv H1.
-      - apply H.
-      - apply (H0 _ _ H3).
-    Qed.
-
-    Fixpoint Expr_ind e : P e :=
+    Fixpoint Expr_rect e : P e :=
       match e with
       | EAtom o => HPAtom o
-      | EBinOp lhs rhs => HPBinOp (Expr_ind lhs) (Expr_ind rhs)
-      | EUnOp arg => HPUnOp (Expr_ind arg)
-      | ECast arg => HPCast (Expr_ind arg)
-      | EComp lhs rhs => HPComp (Expr_ind lhs) (Expr_ind rhs)
-      | ELogic lhs rhs => HPLogic (Expr_ind lhs) (Expr_ind rhs)
-      | EReduction arg => HPReduction (Expr_ind arg)
-      | EShift lhs rhs => HPShift (Expr_ind lhs) (Expr_ind rhs)
-      | EAssign lval arg => HPAssign lval (Expr_ind arg)
-      | EShiftAssign lval arg => HPShiftAssign lval (Expr_ind arg)
+      | EBinOp lhs rhs => HPBinOp _ _ (Expr_rect lhs) (Expr_rect rhs)
+      | EUnOp arg => HPUnOp _ (Expr_rect arg)
+      | ECast arg => HPCast _ (Expr_rect arg)
+      | EComp lhs rhs => HPComp _ _ (Expr_rect lhs) (Expr_rect rhs)
+      | ELogic lhs rhs => HPLogic _ _ (Expr_rect lhs) (Expr_rect rhs)
+      | EReduction arg => HPReduction _ (Expr_rect arg)
+      | EShift lhs rhs => HPShift _ _ (Expr_rect lhs) (Expr_rect rhs)
+      | EAssign lval arg => HPAssign lval _ (Expr_rect arg)
+      | EShiftAssign lval arg => HPShiftAssign lval _ (Expr_rect arg)
       | ECond arg lhs rhs =>
-          HPCond (Expr_ind arg) (Expr_ind lhs) (Expr_ind rhs)
+          HPCond _ _ _ (Expr_rect arg) (Expr_rect lhs) (Expr_rect rhs)
       | EConcat args => HPConcat args
-                           ((list_ind _ HNil
-                               (fun hd tl => HCons tl (Expr_ind hd)))
+                           ((list_rect _ (HNil _)
+                               (fun hd tl => HCons _ _ tl (Expr_rect hd)))
                               args)
-      | ERepl n arg => HPRepl n (Expr_ind arg)
+      | ERepl n arg => HPRepl n _ (Expr_rect arg)
       end
     .
-  End Expr_ind.
-End Expr.
+  End Expr_rect.
 
+  Definition Expr_ind (P: Expr -> Prop) := Expr_rect P.
+  Definition Expr_rec (P: Expr -> Set) := Expr_rect P.
+
+  Theorem Expr_eq_dec : forall (e f: Expr), {e = f} + {e <> f}.
+  Proof.
+    intros. decide equality.
+    - decide equality.
+    - decide equality.
+    - decide equality.
+    - generalize dependent args0. induction args.
+      + destruct args0. left. reflexivity. right. congruence.
+      + destruct args0. right. congruence. destruct (H 0 a (eq_refl _) e0).
+        * edestruct IHargs with (args0 := args0). intros n. apply (H (S n)). subst.
+          auto. right. congruence.
+        * right. congruence.
+    - decide equality.
+  Qed.
+End Expr.
 
 Module Notation.
   Import Expr.
