@@ -267,4 +267,3 @@ Module Algo.
   Qed.
 
 End Algo.
-
