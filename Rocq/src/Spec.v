@@ -38,60 +38,60 @@ Module Spec.
 
     Definition binop_propagate := forall p lhs rhs,
         e @[p] = Some (EBinOp lhs rhs) ->
-        propagate (p ++ [Left]) = propagate p /\
-          propagate (p ++ [Right]) = propagate p.
+        propagate (p ++ [0]) = propagate p /\
+          propagate (p ++ [1]) = propagate p.
 
     Definition unop_propagate := forall p arg,
         e @[p] = Some (EUnOp arg) ->
-        propagate (p ++ [Arg]) = propagate p.
+        propagate (p ++ [0]) = propagate p.
 
     Definition cast_propagate := forall p arg,
         e @[p] = Some (ECast arg) ->
-        propagate (p ++ [Arg]) = determine arg.
+        propagate (p ++ [0]) = determine arg.
 
     Definition comp_propagate := forall p lhs rhs,
         e @[p] = Some (EComp lhs rhs) ->
         forall s, s = max (determine lhs) (determine rhs) ->
-             propagate (p ++ [Left]) = s /\
-               propagate (p ++ [Right]) = s.
+             propagate (p ++ [0]) = s /\
+               propagate (p ++ [1]) = s.
 
     Definition logic_propagate := forall p lhs rhs,
         e @[p] = Some (ELogic lhs rhs) ->
-        propagate (p ++ [Left]) = determine lhs /\
-          propagate (p ++ [Right]) = determine rhs.
+        propagate (p ++ [0]) = determine lhs /\
+          propagate (p ++ [1]) = determine rhs.
 
     Definition red_propagate := forall p arg,
         e @[p] = Some (EReduction arg) ->
-        propagate (p ++ [Arg]) = determine arg.
+        propagate (p ++ [0]) = determine arg.
 
     Definition shift_propagate := forall p lhs rhs,
         e @[p] = Some (EShift lhs rhs) ->
-        propagate (p ++ [Left]) = propagate p /\
-          propagate (p ++ [Right]) = determine rhs.
+        propagate (p ++ [0]) = propagate p /\
+          propagate (p ++ [1]) = determine rhs.
 
     Definition assign_propagate := forall p lval arg,
         e @[p] = Some (EAssign lval arg) ->
         forall s, s = max (determine arg) lval ->
-             propagate (p ++ [Arg]) = s.
+             propagate (p ++ [0]) = s.
 
     Definition shiftassign_propagate := forall p lval arg,
         e @[p] = Some (EShiftAssign lval arg) ->
-        propagate (p ++ [Arg]) = determine arg.
+        propagate (p ++ [0]) = determine arg.
 
     Definition cond_propagate := forall p cond lhs rhs,
         e @[p] = Some (ECond cond lhs rhs) ->
-        propagate (p ++ [Left]) = propagate p /\
-          propagate (p ++ [Right]) = propagate p /\
-          propagate (p ++ [Arg]) = determine cond.
+        propagate (p ++ [0]) = determine cond /\
+          propagate (p ++ [1]) = propagate p /\
+          propagate (p ++ [2]) = propagate p.
 
     Definition concat_propagate := forall p args,
         e @[p] = Some (EConcat args) ->
         forall i f, nth_error args i = Some f ->
-               propagate (p ++ [Args i]) = determine f.
+               propagate (p ++ [i]) = determine f.
 
     Definition repl_propagate := forall p i arg,
         e @[p] = Some (ERepl i arg) ->
-        propagate (p ++ [Arg]) = determine arg.
+        propagate (p ++ [0]) = determine arg.
 
     Definition toplevel_propagate := propagate [] = determine e.
 

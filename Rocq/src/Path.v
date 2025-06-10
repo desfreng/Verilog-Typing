@@ -9,14 +9,7 @@ Import Wf_nat.
 Import Utils.
 
 Module Path.
-  Inductive PathItem :=
-  | Left
-  | Right
-  | Arg
-  | Args (i: nat)
-  .
-
-  Definition path : Type := list PathItem.
+  Definition path := list nat.
 
   Theorem path_ind : forall (P : path -> Prop), P [] -> (forall x l, P l -> P (l ++ [x])) -> forall p, P p.
   Proof.
@@ -27,10 +20,7 @@ Module Path.
     - apply list_sep_None in Hp. subst. assumption.
   Qed.
 
-  Theorem path_item_eq_dec : forall (a b: PathItem), {a = b} + {a <> b}.
-  Proof. decide equality; decide equality. Qed.
-
   Theorem path_eq_dec : forall (a b: path), {a = b} + {a <> b}.
-  Proof. decide equality. apply path_item_eq_dec. Qed.
+  Proof. decide equality. decide equality.  Qed.
 
 End Path.

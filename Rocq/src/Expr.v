@@ -121,28 +121,3 @@ Module Expr.
     - decide equality.
   Qed.
 End Expr.
-
-Module Notation.
-  Import Expr.
-
-  Declare Custom Entry expr.
-  Declare Custom Entry expr_var.
-
-  Notation "$( x )" := x (in custom expr at level 0, x constr, only parsing).
-  Notation "<{ e }>" := e (e custom expr at level 200).
-
-  Notation "( x )" := x (in custom expr at level 0, x custom expr).
-  Notation "x" := (EAtom x) (in custom expr at level 0, x constr at level 0).
-  Notation "x + y" := (EBinOp x y) (in custom expr at level 50, left associativity).
-  Notation "- x" := (EUnOp x) (in custom expr at level 0).
-  Notation "'signed' ( x )" := (ECast x) (in custom expr at level 0).
-  Notation "x == y" := (EComp x y) (in custom expr at level 70, left associativity).
-  Notation "x && y" := (ELogic x y) (in custom expr at level 80, left associativity).
-  Notation "& x" := (EReduction x) (in custom expr at level 0).
-  Notation "x >> y" := (EShift x y) (in custom expr at level 60, left associativity).
-  Notation "'set' x := y" := (EAssign x y) (in custom expr at level 95, x custom expr_var, y custom expr, no associativity).
-  Notation "x ? y : z" := (ECond x y z) (in custom expr at level 90, right associativity).
-  Notation "{ x , .. , y }" := (EConcat (cons x .. (cons y nil) ..)) (in custom expr at level 0, x custom expr, y custom expr).
-  Notation "[ i | x ]" := (ERepl i x) (in custom expr at level 0, i constr, x custom expr).
-
-End Notation.

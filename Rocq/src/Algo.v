@@ -255,7 +255,7 @@ Module Algo.
     rewrite <- Hfc. assumption.
   Qed.
 
-  Theorem toto: forall e, exists t, e ==> t -| size_at (type e).
+  Theorem type_correction: forall e, exists t, e ==> t -| size_at (type e).
   Proof.
     intros. exists (determine e). destruct (always_synth e) as [t [f Hs]].
     destruct (synth_must_be_determine _ _ _ Hs); subst.

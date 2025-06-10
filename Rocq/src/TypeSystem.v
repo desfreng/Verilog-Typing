@@ -20,7 +20,7 @@ Import Utils.
 
 Module TypeSystem.
 
-  Inductive Resizable : Expr -> Set :=
+  Variant Resizable : Expr -> Set :=
   | ResAtom : forall op, Resizable (EAtom op)
   | ResCast : forall e, Resizable (ECast e)
   | ResComp : forall lhs rhs, Resizable (EComp lhs rhs)
@@ -52,8 +52,8 @@ Module TypeSystem.
     fun p =>
       match p with
       | [] => Some t
-      | Left :: p => f p
-      | Right :: p => g p
+      | 0 :: p => f p
+      | 1 :: p => g p
       | _ :: _ => None
       end
   .
@@ -62,7 +62,7 @@ Module TypeSystem.
     fun p =>
       match p with
       | [] => Some t
-      | Arg :: p => f p
+      | 0 :: p => f p
       | _ :: _ => None
       end
   .
@@ -71,9 +71,9 @@ Module TypeSystem.
     fun p =>
       match p with
       | [] => Some t
-      | Arg :: p => f p
-      | Left :: p => g p
-      | Right :: p => h p
+      | 0 :: p => f p
+      | 1 :: p => g p
+      | 2 :: p => h p
       | _ :: _ => None
       end
   .
@@ -81,11 +81,10 @@ Module TypeSystem.
   Definition Narry t (f_k: list (path -> option nat)) : path -> option nat :=
     fun p => match p with
           | [] => Some t
-          | Args i :: p => match nth_error f_k i with
+          | i :: p => match nth_error f_k i with
                          | Some f => f p
                          | None => None
                          end
-          | _ :: _ => None
           end
   .
 
@@ -250,10 +249,17 @@ Module TypeSystem.
     intros. inv H; reflexivity.
   Qed.
 
+  Definition concat_inj_hyp args :=
+    forall (n : nat) (e : Expr),
+      nth_error args n = Some e ->
+      forall (t1 t2 : nat) (f1 f2 : path -> option nat),
+        e ==> t1 -| f1 ->
+        e ==> t2 -| f2 ->
+        t1 = t2 /\ (forall p : path, f1 p = f2 p).
+
   Lemma concat_synth_inj_t: forall args f1 f2 t1 t2,
-      (forall n e, nth_error args n = Some e -> forall t1 t2 f1 f2,
-            e ==> t1 -| f1 -> e ==> t2 -| f2 -> t1 = t2) ->
-      EConcat args ==> t1 -| f1 -> EConcat args ==> t2 -| f2 -> t1 = t2.
+      concat_inj_hyp args -> EConcat args ==> t1 -| f1 -> EConcat args ==> t2 -| f2 ->
+      t1 = t2.
   Proof.
     intros ? ? ? ? ? He H H0. inv H. inv H0.
     assert (Heqt: forall n t1 t2,
@@ -266,42 +272,28 @@ Module TypeSystem.
   Qed.
 
   Lemma concat_synth_inj_f: forall args t1 t2 f1 f2,
-      (forall n e, nth_error args n = Some e -> forall t1 t2 f1 f2,
-            e ==> t1 -| f1 -> e ==> t2 -| f2 -> t1 = t2 /\ forall p, f1 p = f2 p) ->
-      EConcat args ==> t1 -| f1 -> EConcat args ==> t2 -| f2 -> forall p, f1 p = f2 p.
+      concat_inj_hyp args -> EConcat args ==> t1 -| f1 -> EConcat args ==> t2 -| f2 ->
+      forall p, f1 p = f2 p.
   Proof.
-    intros ? ? ? ? ? He H H0. assert (Heq: t1 = t2).
-    { eapply concat_synth_inj_t. intros. edestruct He.
-      apply H1. apply H2. apply H3. assumption. eassumption. eassumption.
-    } subst.
+    intros ? ? ? ? ? He H H0.
+    assert (Heq: t1 = t2) by apply (concat_synth_inj_t _ _ _ _ _ He H H0).
     inv H. inv H0. intros.
     assert (Heqf: forall n f1 f2, nth_error fs n = Some f1 -> nth_error fs0 n = Some f2 ->
                              forall p, f1 p = f2 p).
     { intros. repeat gen_nth. destruct (He _ _ H8 x2 x0 f1 f2); firstorder. }
-    destruct p as [|[]]; try reflexivity. simpl. destruct (nth_error fs i) eqn:Hfs.
-    - repeat gen_nth. rewrite H0. apply Heqf with (n := i); assumption.
-    - destruct (nth_error fs0 i) eqn:Hfs0; try reflexivity. exfalso. repeat gen_nth.
+    destruct p; try reflexivity. simpl. destruct (nth_error fs n) eqn:Hfs.
+    - repeat gen_nth. rewrite H0. apply Heqf with (n := n); assumption.
+    - destruct (nth_error fs0 n) eqn:Hfs0; try reflexivity. exfalso. repeat gen_nth.
       rewrite H1 in Hfs. discriminate Hfs.
   Qed.
 
   Lemma concat_synth_order_f: forall args t1 t2 f1 f2,
-      (forall n e, nth_error args n = Some e -> forall t1 t2 f1 f2,
-            e ==> t1 -| f1 -> e ==> t2 -| f2 ->
-            t1 = t2 /\ forall p, le_option_nat (f1 p) (f2 p)) ->
-      EConcat args ==> t1 -| f1 -> EConcat args ==> t2 -| f2 ->
+      concat_inj_hyp args -> EConcat args ==> t1 -| f1 -> EConcat args ==> t2 -| f2 ->
       forall p, le_option_nat (f1 p) (f2 p).
   Proof.
-    intros ? ? ? ? ? He H H0. assert (Heq: t1 = t2).
-    { eapply concat_synth_inj_t. intros. edestruct He.
-      apply H1. apply H2. apply H3. assumption. eassumption. eassumption.
-    } subst.
-    inv H. inv H0. intros.
-    assert (Hltf: forall n f1 f2, nth_error fs n = Some f1 -> nth_error fs0 n = Some f2 ->
-                             forall p, le_option_nat (f1 p) (f2 p)).
-    { intros. repeat gen_nth. destruct (He _ _ H8 x2 x0 f1 f2); firstorder. }
-    destruct p as [|[]]; try reflexivity. simpl. destruct (nth_error fs i) eqn:Hfs.
-    - repeat gen_nth. rewrite H0. apply Hltf with (n := i); assumption.
-    - destruct (nth_error fs0 i) eqn:Hfs0; try reflexivity.
+    intros ? ? ? ? ? He H H0 p.
+    assert (Heq: forall p, f1 p = f2 p) by apply (concat_synth_inj_f _ _ _ _ _ He H H0).
+    rewrite Heq. reflexivity.
   Qed.
 
   Theorem check_can_grow : forall e t f, e <== t -| f -> forall s, t <= s -> exists f', e <== s -| f'.
@@ -387,41 +379,32 @@ Module TypeSystem.
       | [ A: ?e ==> ?t -| _, B: ?e <== ?t -| _,
               H: forall _ _ _, _ -> _ -> forall _, _ = _ |- le_option_nat _ _ ] =>
           rewrite (H _ _ _ A B); reflexivity
+      | [ H: forall _ _, nth_error _ _ = Some _ -> _, G: nth_error _ _ = Some _ |- _ ] =>
+          specialize (H _ _ G); repeat splitHyp; split; intros
       end
     .
     induction e using Expr_ind; repeat splitAnd; intros; repeat splitHyp;
-      try (destruct p as [|[]]);
-      try (inv_ts; simpl; repeat _eq_gen_inj; auto; try reflexivity;
-           repeat _tac_inj; fail).
-    - inv H1. assert (Heq: t0 = s0).
-      { eapply (concat_synth_inj_t _ _ _ _ _ _ H0 H3). Unshelve.
-        intros. destruct (H _ _ H1). repeat splitHyp. apply (H8 _ _ _ _ H5 H6).
-      } subst. assumption.
-    - eapply (concat_synth_inj_t _ _ _ _ _ _ H1 H2). Unshelve.
-      intros. destruct (H _ _ H3). repeat splitHyp. apply (H7 _ _ _ _ H4 H5).
-    - eapply (concat_synth_inj_f _ _ _ _ _ _ H2 H3). Unshelve.
-      intros. destruct (H _ _ H4). repeat splitHyp. splitAnd. apply (H8 _ _ _ _ H5 H6).
-      intros. subst. apply (H9 _ _ _ H5 H6).
-    - inv H3. inv H4. assert (Heq: forall p, fe p = fe0 p).
-      { eapply (concat_synth_inj_f _ _ _ _ _ _ H6 H8). Unshelve.
-        intros. destruct (H _ _ H4). repeat splitHyp. splitAnd.
-        apply (H13 _ _ _ _ H10 H11). intros. subst. apply (H14 _ _ _ H10 H11).
-      } simpl. apply Heq.
-    - inv H5. assert (Heq: forall p, f1 p = fe p).
-      { eapply (concat_synth_inj_f _ _ _ _ _ _ H4 H7). Unshelve.
-        intros. destruct (H _ _ H5). repeat splitHyp. splitAnd.
-        apply (H12 _ _ _ _ H9 H10). intros. subst. apply (H13 _ _ _ H9 H10).
-      } simpl. apply Heq.
-    - inv H6. _eq_gen_inj. simpl. rewrite (synth_root _ _ _ H5). trivial.
-    - inv H6. _eq_gen_inj. simpl. eapply (concat_synth_order_f _ _ _ _ _ _ H5 H8).
-      Unshelve. intros. destruct (H _ _ H1). repeat splitHyp. repeat splitAnd.
-      apply (H12 _ _ _ _ H6 H10). subst. rewrite (H13 _ _ _ H6 H10). reflexivity.
-    - inv H6. inv H7. _eq_gen_inj. simpl.
-      eapply (concat_synth_order_f _ _ _ _ _ _ H10 H12).
-      Unshelve. intros. destruct (H _ _ H1).
-      repeat splitHyp. repeat splitAnd. apply (H16 _ _ _ _ H7 H14). subst.
-      rewrite (H17 _ _ _ H7 H14). reflexivity.
+    try (try (destruct p as [|[|[|[]]]]); inv_ts; simpl; repeat _eq_gen_inj;
+         auto; try reflexivity; repeat _tac_inj; fail);
+    assert (concat_inj_hyp args) by (unfold concat_inj_hyp; intros; repeat _tac_inj).
+    - inv H1. assert _ by apply (concat_synth_inj_t _ _ _ _ _ H2 H0 H4).
+      subst. assumption.
+    - apply (concat_synth_inj_t _ _ _ _ _ H3 H1 H2).
+    - apply (concat_synth_inj_f _ _ _ _ _ H4 H2 H3).
+    - inv H3. inv H4. destruct p; simpl.
+      + reflexivity.
+      + apply (concat_synth_inj_f _ _ _ _ _ H5 H7 H9).
+    - inv H5. destruct p; simpl.
+      + apply (synth_root _ _ _ H4).
+      + apply (concat_synth_inj_f _ _ _ _ _ H6 H4 H8).
+    - inv H6. _eq_gen_inj. simpl. destruct p.
+      + rewrite (synth_root _ _ _ H5). trivial.
+      + apply (concat_synth_order_f _ _ _ _ _ H7 H5 H9).
+    - inv H6. inv H7. _eq_gen_inj. simpl. destruct p.
+      + assumption.
+      + apply (concat_synth_order_f _ _ _ _ _ H9 H11 H13).
   Qed.
+
 
   Theorem synth_check_order : forall e t s f1 f2, e ==> t -| f1 -> e <== s -| f2 -> t <= s.
   Proof.
@@ -516,21 +499,21 @@ Module TypeSystem.
     .
     induction e using Expr_ind; repeat split; intros; repeat splitHyp;
       inv_ts; repeat _invHyp_fun_path; try (try (eexists; reflexivity); firstorder);
-      try (destruct p as [|[]]; simpl in *; discriminate H || inv H; _tac_fun_path).
+      try (destruct p as [|[|[|[]]]]; simpl in *; discriminate H || inv H;
+           _tac_fun_path).
     - destruct (H _ _ H2). repeat gen_nth. simpl. rewrite H7.
       assert (He: e ==> x0 -| x) by apply (H5 _ _ _ _ H2 H4 H7). firstorder.
-    - destruct p as [|[]]; simpl in *; discriminate H0 || inv H0. constructor.
-      destruct (nth_error fs i) eqn:Hnth. repeat gen_nth. econstructor. eassumption.
+    - destruct p; simpl in *; discriminate H0 || inv H0. constructor.
+      destruct (nth_error fs n) eqn:Hnth. repeat gen_nth. econstructor. eassumption.
       destruct (H _ _ H0). apply (H5 _ _ _ _ H0 H1) in Hnth. _tac_fun_path.
       discriminate H2.
     - destruct (H _ _ H2). repeat gen_nth. simpl. rewrite H8.
       assert (He: e ==> x0 -| x) by apply (H7 _ _ _ _ H2 H6 H8). firstorder.
-    - destruct p as [|[]]; simpl in *; discriminate H0 || inv H0. constructor.
-      destruct (nth_error fs i) eqn:Hnth. repeat gen_nth. econstructor. eassumption.
+    - destruct p; simpl in *; discriminate H0 || inv H0. constructor.
+      destruct (nth_error fs n) eqn:Hnth. repeat gen_nth. econstructor. eassumption.
       destruct (H _ _ H0). apply (H7 _ _ _ _ H0 H1) in Hnth. _tac_fun_path.
       discriminate H2.
   Qed.
-
 
   Theorem synth_f_path : forall e t f, e ==> t -| f -> forall p, IsPath e p <-> exists n, f p = Some n.
   Proof.
@@ -557,16 +540,21 @@ Module TypeSystem.
       end
     .
     induction e using Expr_ind; split; intros; repeat splitHyp;
-      destruct p as [|[]]; _inv_se_f; try (exists t0; exists f; split; auto; intros; reflexivity);
-      repeat inv_ts; firstorder.
-    - destruct (nth_error args i) eqn:Hnth; try (discriminate H3). destruct (H _ _ Hnth).
-      clear H. repeat inv_ts. repeat gen_nth. simpl. rewrite H.
-      assert (He: e ==> x0 -| x) by apply (H5 _ _ _ _ Hnth H4 H).
-      firstorder.
-    - destruct (nth_error args i) eqn:Hnth; try (discriminate H3). destruct (H _ _ Hnth).
-      clear H. repeat inv_ts. repeat gen_nth. simpl. rewrite H.
-      assert (He: e ==> x0 -| x) by apply (H7 _ _ _ _ Hnth H2 H).
-      firstorder.
+      try (destruct p as [|[|[|[]]]]; _inv_se_f;
+           try (exists t0; exists f; split; auto; intros; reflexivity);
+           repeat inv_ts; firstorder; fail).
+    - destruct p; _inv_se_f.
+      + exists t0; exists f; split; auto; intros; reflexivity.
+      + destruct (nth_error args n) eqn:Hnth; try congruence.
+        specialize (H _ _ Hnth). destruct H as [Hs Hc].
+        repeat inv_ts. repeat gen_nth. specialize (H4 _ _ _ _ Hnth H0 H).
+        simpl. rewrite H. firstorder.
+    - destruct p; _inv_se_f.
+      + exists t0; exists f; split; auto; intros; reflexivity.
+      + destruct (nth_error args n) eqn:Hnth; try congruence.
+        specialize (H _ _ Hnth). destruct H as [Hs Hc].
+        repeat inv_ts. repeat gen_nth. specialize (H6 _ _ _ _ Hnth H0 H).
+        simpl. rewrite H. firstorder.
   Qed.
 
   Theorem synth_sub_expr : forall e t f p e',
