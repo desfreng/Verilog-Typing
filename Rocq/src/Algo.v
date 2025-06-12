@@ -40,7 +40,6 @@ Module Algo.
     | TAssign _ lval tArg =>
         let sArg := max lval (size tArg) in
         TAssign s lval (down sArg tArg)
-    | TShiftAssign _ lval tArg => TShiftAssign s lval (down (size tArg) tArg)
     | TCond _ tArg tLhs tRhs => TCond s (down (size tArg) tArg) (down s tLhs) (down s tRhs)
     | TConcat _ tArgs =>
         TConcat s (map (fun tE => down (size tE) tE) tArgs)
@@ -80,9 +79,6 @@ Module Algo.
     | EAssign lval arg =>
         let uArg := up arg in
         TAssign lval lval uArg
-    | EShiftAssign lval arg =>
-        let uArg := up arg in
-        TShiftAssign lval lval uArg
     | ECond arg lhs rhs =>
         let uArg := up arg in
         let uLhs := up lhs in

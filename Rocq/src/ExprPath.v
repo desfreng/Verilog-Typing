@@ -38,8 +38,6 @@ Module ExprPath.
       IsPath rhs p -> IsPath (EShift lhs rhs) (1 :: p)
   | P_AssignArg : forall op arg p,
       IsPath arg p -> IsPath (EAssign op arg) (0 :: p)
-  | P_ShiftAssignArg : forall op arg p,
-      IsPath arg p -> IsPath (EShiftAssign op arg) (0 :: p)
   | P_CondCond : forall cond tb fb p,
       IsPath cond p -> IsPath (ECond cond tb fb) (0 :: p)
   | P_CondTrue : forall cond tb fb p,
@@ -67,7 +65,6 @@ Module ExprPath.
     | EShift lhs _, 0 :: p => sub_expr lhs p
     | EShift _ rhs, 1 :: p => sub_expr rhs p
     | EAssign _ arg, 0 :: p => sub_expr arg p
-    | EShiftAssign _ arg, 0 :: p => sub_expr arg p
     | ECond cond _ _, 0 :: p => sub_expr cond p
     | ECond _ tb _, 1 :: p => sub_expr tb p
     | ECond _ _ fb, 2 :: p => sub_expr fb p

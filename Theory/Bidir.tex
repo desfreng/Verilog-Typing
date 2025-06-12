@@ -19,11 +19,6 @@
 
 \DeclareMathOperator{\Path}{Path}
 
-\newcommand{\Left}{\ensuremath{\mathrm{Left}}}
-\newcommand{\Right}{\ensuremath{\mathrm{Right}}}
-\newcommand{\Arg}{\ensuremath{\mathrm{Arg}}}
-\newcommand{\Args}[1]{\ensuremath{\mathrm{Args}(#1)}}
-
 \DeclareMathOperator{\Binary}{Binary}
 \DeclareMathOperator{\Unary}{Unary}
 \DeclareMathOperator{\Ternary}{Ternary}
@@ -53,14 +48,6 @@
 \newcommand{\shift}{\ensuremath{\left\{
       \texttt{>>}, \texttt{<}\texttt{<}, \texttt{**}, \texttt{>>>},
       \texttt{<}\texttt{<}\texttt{<}
-    \right\}}}
-\newcommand{\assignBinOp}{\ensuremath{\left\{
-      \texttt{=}, \texttt{+=}, \texttt{-=}, \texttt{*=}, \texttt{/=},
-      \texttt{\%=}, \texttt{\&=}, \texttt{|=}, \texttt{\^{}=}
-    \right\}}}
-\newcommand{\assignShift}{\ensuremath{\left\{
-      \texttt{<}\texttt{<=}, \texttt{>>=},
-      \texttt{<}\texttt{<}\texttt{<=}, \texttt{>>>=}
     \right\}}}
 
 \pagestyle{empty}
@@ -103,31 +90,31 @@ We use the following notations:
         \Binary(t, f, g) : \left\{
         \begin{array}{ccc}
             {[]}               & \mapsto & t     \\
-            \Left \dblcolon p  & \mapsto & f (p) \\
-            \Right \dblcolon p & \mapsto & g (p)
+            0 \dblcolon p  & \mapsto & f (p) \\
+            1 \dblcolon p & \mapsto & g (p)
         \end{array}
         \right.
          & \hspace{1em} &
         \Unary(f, t) : \left\{
         \begin{array}{ccc}
             {[]}             & \mapsto & t     \\
-            \Arg \dblcolon p & \mapsto & f (p)
+            0 \dblcolon p & \mapsto & f (p)
         \end{array}
         \right.
         \\
         \Narry(t, f_1, \dots, f_k) : \left\{
         \begin{array}{ccc}
             {[]}                 & \mapsto & t       \\
-            \Args{i} \dblcolon p & \mapsto & f_i (p)
+            i \dblcolon p & \mapsto & f_i (p)
         \end{array}
         \right.
          & \hspace{1em} &
         \Ternary(t, f, g, h) : \left\{
         \begin{array}{ccc}
             {[]}               & \mapsto & t     \\
-            \Arg \dblcolon p   & \mapsto & f (p) \\
-            \Left \dblcolon p  & \mapsto & g (p) \\
-            \Right \dblcolon p & \mapsto & h (p)
+            0 \dblcolon p   & \mapsto & f (p) \\
+            1 \dblcolon p  & \mapsto & g (p) \\
+            2] \dblcolon p & \mapsto & h (p)
         \end{array}
         \right.
     \end{array}
@@ -267,14 +254,14 @@ We use the following notations:
               \end{prooftree}
           \end{align*}
 
-    \item $\oplus \in \assignBinOp$:
+    \item Assigment:
 
           \begin{align*}
                &
               \begin{prooftree}
                   \hypo{\phi(l) = t}
                   \hypo{\c{e}{t}{f}}
-                  \infer2[LAssign\S]{\s{l \oplus e}{t}{\Unary(t, f)}}
+                  \infer2[LAssign\S]{\s{(l~\texttt{=}~e)}{t}{\Unary(t, f)}}
               \end{prooftree}
                &
                &
@@ -282,20 +269,9 @@ We use the following notations:
                   \hypo{\phi(l) = t}
                   \hypo{\s{e}{t_e}{f}}
                   \hypo{t < t_e}
-                  \infer3[RAssign\S]{\s{l \oplus e}{t}{\Unary(t, f)}}
+                  \infer3[RAssign\S]{\s{(l~\texttt{=}~e)}{t}{\Unary(t, f)}}
               \end{prooftree}
           \end{align*}
-
-
-    \item $\oplus \in \assignShift$:
-
-          \begin{equation*}
-              \begin{prooftree}
-                  \hypo{\phi(l) = t}
-                  \hypo{\s{e}{t_e}{f}}
-                  \infer2[AssignShift\S]{\s{l \oplus e}{t}{\Unary(t, f)}}
-              \end{prooftree}
-          \end{equation*}
 
 
     \item If expression:

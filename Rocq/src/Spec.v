@@ -26,7 +26,6 @@ Module Spec.
       | EReduction _ => 1
       | EShift lhs _ => determine lhs
       | EAssign lval _ => lval
-      | EShiftAssign lval _ => lval
       | ECond _ lhs rhs => max (determine lhs) (determine rhs)
       | EConcat args => sum (map determine args)
       | ERepl i arg => i * determine arg
@@ -74,10 +73,6 @@ Module Spec.
         forall s, s = max (determine arg) lval ->
              propagate (p ++ [0]) = s.
 
-    Definition shiftassign_propagate := forall p lval arg,
-        e @[p] = Some (EShiftAssign lval arg) ->
-        propagate (p ++ [0]) = determine arg.
-
     Definition cond_propagate := forall p cond lhs rhs,
         e @[p] = Some (ECond cond lhs rhs) ->
         propagate (p ++ [0]) = determine cond /\
@@ -98,8 +93,7 @@ Module Spec.
     Definition propagate_def :=
       toplevel_propagate /\ binop_propagate /\ unop_propagate /\ cast_propagate /\
         comp_propagate /\ logic_propagate /\ red_propagate /\ shift_propagate /\
-        assign_propagate /\ shiftassign_propagate /\ cond_propagate /\
-        concat_propagate /\ repl_propagate.
+        assign_propagate /\ cond_propagate /\ concat_propagate /\ repl_propagate.
   End SpecDef.
 
   Create HintDb Spec discriminated.
@@ -113,7 +107,6 @@ Module Spec.
   Hint Unfold red_propagate : Spec.
   Hint Unfold shift_propagate : Spec.
   Hint Unfold assign_propagate : Spec.
-  Hint Unfold shiftassign_propagate : Spec.
   Hint Unfold cond_propagate : Spec.
   Hint Unfold concat_propagate : Spec.
   Hint Unfold repl_propagate : Spec.
@@ -124,7 +117,7 @@ Module Spec.
   Ltac prop_split :=
     match goal with
     | [ H: propagate_def _ _ |- _ ] =>
-        destruct H as [?HTopLevel [?HBinOp [?HUnOp [?HCast [?HComp [?HLogic [?HRed [?HShift [?HAssign [?HShiftAssign [?HCond [?HConcat ?HRepl]]]]]]]]]]]]
+        destruct H as [?HTopLevel [?HBinOp [?HUnOp [?HCast [?HComp [?HLogic [?HRed [?HShift [?HAssign [?HCond [?HConcat ?HRepl]]]]]]]]]]]
     end
   .
 
@@ -148,8 +141,6 @@ Module Spec.
         specialize (H _ _ _ F); destruct H
     | [ F: _ @[_] = Some (EAssign _ _), H: assign_propagate _ _ |- _ ] =>
         specialize (H _ _ _ F _ (eq_refl _))
-    | [ F: _ @[_] = Some (EShiftAssign _ _), H: shiftassign_propagate _ _ |- _ ] =>
-        specialize (H _ _ _ F)
     | [ F: _ @[_] = Some (ECond _ _ _), H: cond_propagate _ _ |- _ ] =>
         specialize (H _ _ _ _ F); destruct H as [? [? ?]]
     | [ G: nth_error _ _ = _, F: _ @[_] = Some (EConcat _),

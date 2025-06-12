@@ -20,7 +20,6 @@ Module TypedExpr.
   | TReduction (size: nat) (arg: TypedExpr)
   | TShift (size: nat) (lhs rhs: TypedExpr)
   | TAssign (size lval: nat) (arg: TypedExpr)
-  | TShiftAssign (size lval: nat) (arg: TypedExpr)
   | TCond (size: nat) (cond tb fb: TypedExpr)
   | TConcat (size: nat) (args: list TypedExpr)
   | TRepl (size amount: nat) (arg: TypedExpr)
@@ -58,9 +57,6 @@ Module TypedExpr.
     Hypothesis HPAssign:
       forall s op arg, P arg -> P (TAssign s op arg).
 
-    Hypothesis HPShiftAssign:
-      forall s op arg, P arg -> P (TShiftAssign s op arg).
-
     Hypothesis HPCond:
       forall s cond tb fb, P cond -> P tb -> P fb -> P (TCond s cond tb fb).
 
@@ -93,7 +89,6 @@ Module TypedExpr.
       | TReduction s arg => HPReduction s _ (TypedExpr_ind arg)
       | TShift s lhs rhs => HPShift s _ _ (TypedExpr_ind lhs) (TypedExpr_ind rhs)
       | TAssign s lval arg => HPAssign s lval _ (TypedExpr_ind arg)
-      | TShiftAssign s lval arg => HPShiftAssign s lval _ (TypedExpr_ind arg)
       | TCond s arg lhs rhs =>
           HPCond s _ _ _ (TypedExpr_ind arg) (TypedExpr_ind lhs) (TypedExpr_ind rhs)
       | TConcat s args => HPConcat s args
@@ -116,7 +111,6 @@ Module TypedExpr.
     | TReduction s _ => s
     | TShift s _ _ => s
     | TAssign s _ _ => s
-    | TShiftAssign s _ _ => s
     | TCond s _ _ _ => s
     | TConcat s  _ => s
     | TRepl s _ _ => s

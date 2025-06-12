@@ -18,7 +18,6 @@ Module Expr.
   | EReduction (arg: Expr)
   | EShift (lhs rhs: Expr)
   | EAssign (lval: nat) (arg: Expr)
-  | EShiftAssign (lval: nat) (arg: Expr)
   | ECond (cond tb fb: Expr)
   | EConcat (args: list Expr)
   | ERepl (amount: nat) (arg: Expr)
@@ -68,9 +67,6 @@ Module Expr.
     Hypothesis HPAssign:
       forall op arg, P arg -> P (EAssign op arg).
 
-    Hypothesis HPShiftAssign:
-      forall op arg, P arg -> P (EShiftAssign op arg).
-
     Hypothesis HPCond:
       forall cond tb fb, P cond -> P tb -> P fb -> P (ECond cond tb fb).
 
@@ -91,7 +87,6 @@ Module Expr.
       | EReduction arg => HPReduction _ (Expr_rect arg)
       | EShift lhs rhs => HPShift _ _ (Expr_rect lhs) (Expr_rect rhs)
       | EAssign lval arg => HPAssign lval _ (Expr_rect arg)
-      | EShiftAssign lval arg => HPShiftAssign lval _ (Expr_rect arg)
       | ECond arg lhs rhs =>
           HPCond _ _ _ (Expr_rect arg) (Expr_rect lhs) (Expr_rect rhs)
       | EConcat args => HPConcat args
@@ -109,7 +104,6 @@ Module Expr.
   Theorem Expr_eq_dec : forall (e f: Expr), {e = f} + {e <> f}.
   Proof.
     intros. decide equality.
-    - decide equality.
     - decide equality.
     - decide equality.
     - generalize dependent args0. induction args.

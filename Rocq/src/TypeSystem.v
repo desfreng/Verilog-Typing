@@ -27,7 +27,6 @@ Module TypeSystem.
   | ResLogic : forall lhs rhs, Resizable (ELogic lhs rhs)
   | ResRed : forall e, Resizable (EReduction e)
   | ResAssign : forall lval arg, Resizable (EAssign lval arg)
-  | ResShiftAssign : forall lval arg, Resizable (EShiftAssign lval arg)
   | ResConcat : forall args, Resizable (EConcat args)
   | ResRepl : forall amount arg, Resizable (ERepl amount arg)
   .
@@ -157,11 +156,6 @@ Module TypeSystem.
       lval < te ->
       f = Unary lval fe ->
       EAssign lval e ==> lval -| f
-
-  | ShiftAssignS : forall lval e f te fe,
-      e ==> te -| fe ->
-      f = Unary lval fe ->
-      EShiftAssign lval e ==> lval -| f
 
   | LCondS : forall e a b t f te fe fa fb,
       e ==> te -| fe ->
@@ -594,7 +588,6 @@ Module TypeSystem.
       + destruct (synth_can_check _ _ _ _ H l). eexists.
         eapply LAssignS; eassumption || reflexivity.
       + eexists. eapply RAssignS; eassumption || reflexivity.
-    - eexists. eapply ShiftAssignS; eassumption || reflexivity.
     - destruct (max_dec_bis (determine e2) (determine e3)) as [[H2 H3]|[H2 H3]].
       + destruct (synth_can_check _ _ _ _ H H3). eexists. simpl. rewrite H2.
         eapply LCondS; eassumption || reflexivity.

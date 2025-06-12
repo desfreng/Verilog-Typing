@@ -38,8 +38,6 @@ Module TypedExprPath.
       IsTypedPath rhs p -> IsTypedPath (TShift s lhs rhs) (1 :: p)
   | TP_AssignArg : forall s op arg p,
       IsTypedPath arg p -> IsTypedPath (TAssign s op arg) (0 :: p)
-  | TP_ShiftAssignArg : forall s op arg p,
-      IsTypedPath arg p -> IsTypedPath (TShiftAssign s op arg) (0 :: p)
   | TP_CondCond : forall s cond tb fb p,
       IsTypedPath cond p -> IsTypedPath (TCond s cond tb fb) (0 :: p)
   | TP_CondTrue : forall s cond tb fb p,
@@ -68,7 +66,6 @@ Module TypedExprPath.
     | TShift _ lhs _, 0 :: p => sub_typed_expr lhs p
     | TShift _ _ rhs, 1 :: p => sub_typed_expr rhs p
     | TAssign _ _ arg, 0 :: p => sub_typed_expr arg p
-    | TShiftAssign _ _ arg, 0 :: p => sub_typed_expr arg p
     | TCond _ cond _ _, 0 :: p => sub_typed_expr cond p
     | TCond _ _ tb _, 1 :: p => sub_typed_expr tb p
     | TCond _ _ _ fb, 2 :: p => sub_typed_expr fb p
