@@ -1,0 +1,595 @@
+\documentclass{article}
+\usepackage[a4paper, margin=2cm]{geometry}
+\usepackage[english]{babel}
+\usepackage[mono=false]{libertine}
+
+\usepackage{microtype}
+\usepackage{selnolig}
+
+\usepackage[pdfencoding=auto]{hyperref}
+\usepackage{bookmark}
+\usepackage{parskip}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{minted}
+
+\setminted{
+  frame=lines,
+  framesep=2mm,
+  linenos=true,
+  numbersep=5pt
+}
+
+\newcommand{\sv}[1]{\mintinline{verilog}{#1}}
+
+\newcommand{\tild}{\raisebox{-.7ex}{\textasciitilde{}}}
+
+\newcommand{\sds}{\emph{self-determined-size}}
+\newcommand{\mbr}{\emph{may be resized}}
+
+\newenvironment{typingrule}[1]%
+{\par\noindent\textbf{Rule (#1):} }%
+{\par}
+
+\begin{document}
+
+\section{Expression bit lengths}%
+\label{expression-bit-lengths}
+
+The number of bits of any expression is determined by the operands and the
+context in which it occurs. Casting can be used to set the target size of an
+intermediate value (see 6.24).
+
+Controlling the number of bits that are used in expression evaluations is
+important if consistent results are to be achieved. The following typing system
+provides precise rules for determining expression bit lengths in all situations.
+
+\subsection{Bidirectional typing operations}%
+\label{bidirectional-typing-operations}
+
+The bit length of expressions is defined using the fundamental concepts:
+
+\begin{description}
+  \item[Self-determined size]
+    We call \sds{} the size that is intrinsic to an expression: i.e.~it is
+    solely based on the expression's internal structure and operands.
+
+  \item[Resizing]
+    Expressions \mbr{} to sizes greater than or equal to their \sds{}. This
+    operation may change the size of the internal expression.
+\end{description}
+
+\subsection{Expression categories for resizing}%
+\label{expression-categories-for-resizing}
+
+SystemVerilog expressions shall be categorized into two types based on their
+resizing behavior:
+
+\subsubsection{Atomically resizable expressions}%
+\label{atomically-resizable-expressions}
+
+Atomically resizable expressions \mbr{} without affecting their
+internal operand sizes. The following expressions are atomically resizable:
+
+\begin{itemize}
+  \item Operands as defined in 11.2 (nets, variables, literals, function
+    calls, etc.)
+  \item Comparison expressions: \texttt{===}, \texttt{!==}, \texttt{==?},
+    \texttt{!=?}, \texttt{==}, \texttt{!=}, \texttt{>}, \texttt{>=}, \texttt{<},
+    \texttt{<=}
+  \item Logical expressions: \texttt{\&\&}, \texttt{||}, \texttt{->},
+    \texttt{<->}
+  \item Reduction expressions: \texttt{\&}, \texttt{\tild\&}, \texttt{|},
+    \texttt{\tild|}, \texttt{\^{}}, \texttt{\tild\^{}}, \texttt{\^{}\tild},
+    \texttt{!}
+  \item Assignment expressions: \texttt{=}, \texttt{+=}, \texttt{-=},
+    \texttt{*=}, \texttt{/=}, \texttt{\%=}, \texttt{\&=},
+    \texttt{|=}, \texttt{\^{}=}
+  \item Shift assignment expressions: \texttt{<<=}, \texttt{>>=}, \texttt{<<<=},
+    \texttt{>>>=}
+  \item Concatenation expressions: \texttt{\string{\dots\string}}
+  \item Replication expressions: \texttt{\string{.\string{\dots\string}\string}}
+  \item Set membership expressions: \texttt{inside}
+\end{itemize}
+
+When an atomically resizable expression is resized to a
+target size, only the expression's result shall be extended --- its operands
+shall remain unmodified.
+
+\begin{typingrule}{Atomic-Resize}
+  If $e$ has a \sds{} of $t$ and $n$ is larger than $t$
+  and $e$ is atomically resizable, then $e$ \mbr{} to $n$.
+\end{typingrule}
+
+\subsubsection{Non-atomically resizable expressions}%
+\label{non-atomically-resizable-expressions}
+
+Non-atomically resizable expressions propagate resizing to their operands when
+a target size is specified. These expressions require their operands to be
+adjusted to specific sizes based on the resizing rules. The following expression
+are not atomically resizable:
+
+\begin{itemize}
+  \item Binary and bitwise expression:  \texttt{+}, \texttt{-}, \texttt{*},
+    \texttt{/}, \texttt{\%}, \texttt{\&}, \texttt{|}, \texttt{\^{}},
+    \texttt{\^{}\tild}, \texttt{\tild\^{}}
+  \item Unary arithmetic, bitwise, increment and decrement expressions:
+    \texttt{+}, \texttt{-}, \texttt{\tild}, \texttt{++}, \texttt{--}
+  \item Shift and power expression: \texttt{>>}, \texttt{<}\texttt{<},
+    \texttt{**}, \texttt{>>>}, \texttt{<}\texttt{<}\texttt{<}
+  \item Conditional expression: \texttt{?:}
+
+\end{itemize}
+
+Binary arithmetic and bitwise expressions propagate the target size to both
+operands:
+
+\begin{typingrule}{Binary-Resize}
+  If $a$ \mbr{} to $n$ and $b$ \mbr{} to $n$, then $a \oplus b$ \mbr{} to $n$.
+\end{typingrule}
+
+Unary arithmetic, unary bitwise negation and unary increment and decrement
+expressions propagate the target size to their single operand:
+
+\begin{typingrule}{Unary-Resize}
+  If $e$ \mbr{} to $n$, then $\oplus e$ \mbr{} to $n$.
+\end{typingrule}
+
+Shift and power expressions propagate the target size only to the left operand,
+while the right operand remains \emph{self-determined}:
+
+\begin{typingrule}{Shift-Resize}
+  If $a$ \mbr{} to $n$ and $b$ has a \sds{} of $t_{b}$, then
+  $a \oplus b$ \mbr{} to $n$.
+\end{typingrule}
+
+Conditional expressions propagate the target size to both branch expressions,
+while the condition remains \emph{self-determined}:
+
+\begin{typingrule}{Conditional-Resize}
+  If $c$ has a \sds{} size of $t_{C}$ and $t_{e}$ \mbr{} to $n$ and $f_{e}$
+  \mbr{} to $n$, then $c~\texttt{?}~t_{e}~\texttt{:}~f_{e}$ \mbr{} to $n$.
+\end{typingrule}
+
+\subsection{\emph{Self-determined} expression sizing rules}%
+\label{self-determined-expression-sizing-rules}
+
+The \sds{} of an expression, solely based on its internal
+structure and operands, shall be computed according to the following rules:
+
+\subsubsection{Operands}%
+\label{operands}
+
+For operands as defined in 11.2, the \sds{} is always
+well-defined and determined by their declaration, literal specification, or
+result type:
+
+\begin{typingrule}{Operand-Size}
+  If $e$ is an operand and $s$ its size, then $e$ shall have a \sds{} of $s$.
+\end{typingrule}
+
+Examples:
+
+\begin{itemize}
+  \item Sized integer literals: \verb|8'hFF| has a \sds{} of 8,
+    \verb|32'd123| has a \sds{} of 32,
+  \item Unsized integer literals: \verb|123|, \verb|'hABC| have a
+    \sds{} of at least 32 bits,
+  \item Parameters, nets, variables and structure fields have their size as
+    defined by their declaration --- \verb|logic [15:0] data| has a
+    \sds{} of 16,
+  \item Bit-select: \verb|data[5]| has a \sds{} of 1,
+  \item Part-select: \verb|data[7:0]| has a \sds{} of 8,
+    \verb|data[base +: 4]| has a \sds{} of 4,
+  \item Function calls: Have their size defined by their return type --- a
+    function returning \verb|logic [31:0]| has a
+    \sds{} of 32,
+  \item Variadic sized function calls: For functions whose return type depends
+    on their arguments, the arguments' sizes shall be determined as if
+    they were in an assignment context. Once all argument sizes are
+    determined, the function's result type becomes known and defines the
+    \sds{}.
+\end{itemize}
+
+\subsubsection{Binary arithmetic and bitwise expressions}%
+\label{binary-arithmetic-and-bitwise-expressions}
+
+For binary arithmetic and bitwise expressions, the \sds{}
+is the maximum of the operand sizes. The smaller operand is \emph{resized}
+to match the larger operand's size.
+
+\begin{typingrule}{Binary-Left-Size}
+  If $a$ has a \sds{} of $t$ and $b$ \mbr{}
+  to $t$, then $a \oplus b$ shall have a \sds{} of $t$.
+\end{typingrule}
+
+\begin{typingrule}{Binary-Right-Size}
+  If $b$ has a \sds{} of $t$ and $a$ \mbr{}
+  to $t$, then $a \oplus b$ shall have a \sds{} of $t$.
+\end{typingrule}
+
+\subsubsection{Unary expressions}%
+\label{unary-expressions}
+
+For unary expressions (Unary arithmetic, unary bitwise negation and unary
+increment and decrement), the \sds{} is identical to the
+operand size.
+
+\begin{typingrule}{Unary-Size}
+  If $e$ has a \sds{} of $t$, then $\oplus e$ shall have
+  a \sds{} of $t$.
+\end{typingrule}
+
+\subsubsection{Relational and equality expressions}%
+\label{relational-and-equality-expressions}
+
+For relational and equality expressions, the \sds{} is
+always 1 bit. The smaller operand shall be resized to match the larger operand's
+size for comparison purposes.
+
+\begin{typingrule}{Relational-Left-Size}
+  If $a$ has a \sds{} of $t$ and $b$ \mbr{}
+  to $t$, then $a \oplus b$ shall have a \sds{} of $1$.
+\end{typingrule}
+
+\begin{typingrule}{Relational-Right-Size}
+  If $b$ has a \sds{} of $t$ and $a$ \mbr{}
+  to $t$, then $a \oplus b$ shall have a \sds{} of $1$.
+\end{typingrule}
+
+\subsubsection{Logical expressions}%
+\label{logical-expressions}
+
+For binary logical expressions, the \sds{} is always 1 bit.
+All operands are \emph{self-determined}.
+
+\begin{typingrule}{Logical-Size}
+  If $a$ has a \sds{} of $t_{a}$ and $b$ has a
+  \sds{} of $t_{b}$, then $a \oplus b$ shall have a
+  \sds{} of 1.
+\end{typingrule}
+
+\subsubsection{Reduction expressions}%
+\label{reduction-expressions}
+
+For reduction expressions, including \texttt{!}, the \sds{}
+is always 1 bit. The operand is \emph{self-determined}.
+
+\begin{typingrule}{Reduction-Size}
+  If $e$ has a \sds{} of $t$, then $\oplus e$ shall have a
+  \sds{} of 1.
+\end{typingrule}
+
+\subsubsection{Shift and power expressions}%
+\label{shift-and-power-expressions}
+
+For shift and power expressions, the \sds{} is determined
+by the left operand. The right operand shall be \emph{self-determined}.
+
+\begin{typingrule}{Shift-Size}
+  If $a$ has a \sds{} of $t$ and $b$ has a
+  \sds{} of $t_{b}$, then $a \oplus b$ shall have a
+  \sds{} of $t$.
+\end{typingrule}
+
+\subsubsection{Assignment expressions}%
+\label{assignment-expressions}
+
+For assignment expressions, the \sds{} is determined by the
+left-hand side. When the left-hand side has a larger size than the right-hand
+side, the right-hand side shall \emph{be resized}. Otherwise, the right-hand
+side shall be \emph{self-determined}.
+
+\begin{typingrule}{Assignment-Left-Size}
+  If the left-hand side $l$ has a size of $t$ and $e$ \mbr{} to
+  $t$, then $l \oplus e$ shall have a \sds{} of $t$.
+\end{typingrule}
+
+\begin{typingrule}{Assignment-Right-Size}
+  If the left-hand side $l$ has a size of $t$, $e$ has a
+  \sds{} of $t_{e}$ and $t$ is smaller than $t_{e}$, then
+  $l \oplus e$ shall have a \sds{} of $t$.
+\end{typingrule}
+
+For shift assignment expressions, the right operand is always
+\emph{self-determined}.
+
+\begin{typingrule}{Shift-Assignment-Size}
+  If the left-hand side $l$ has a size of $t$ and $e$ has a
+  \sds{} of $t_{e}$, then $l \oplus e$ shall have a
+  \sds{} of $t$.
+\end{typingrule}
+
+\subsubsection{Conditional expressions}%
+\label{conditional-expressions}
+
+For conditional expressions using the \texttt{?:} operator, the
+\sds{} is the maximum size of the two branch expressions.
+The smaller branch shall be resized to match the larger branch. The condition
+shall be \emph{self-determined}.
+
+\begin{typingrule}{Conditional-Left-Size}
+  If $c$ has a \sds{} of $t_{c}$, $a$ has a
+  \sds{} of $t$, and $b$ \mbr{} to $t$,
+  then $c \verb|?| a \verb|:| b$ shall have a \sds{} of
+  $t$.
+\end{typingrule}
+
+\begin{typingrule}{Conditional-Right-Size}
+  If $c$ has a \sds{} of $t_{c}$, $b$ has a
+  \sds{} of $t$, and $a$ \mbr{} to $t$,
+  then $c \verb|?| a \verb|:| b$ shall have a \sds{} of
+  $t$.
+\end{typingrule}
+
+\subsubsection{Concatenation expressions}%
+\label{concatenation-expressions}
+
+For concatenation expressions, the \sds{} is the sum of the
+\emph{self-determined sizes} of all operands.
+
+\begin{typingrule}{Concatenation-Size}
+  If $e_{1}$ has a \sds{} of $t_{1}$, \ldots, $e_{k}$ has a
+  \sds{} of $t_{k}$, and $t$ is the sum of
+  $t_{1}, \dots, t_{k}$, then $\verb|{|e_{1}, \dots, e_{k}\verb|}|$ shall have
+  a \sds{} of $t$.
+\end{typingrule}
+
+\subsubsection{Replication expressions}%
+\label{replication-expressions}
+
+The \sds{} of a replication is the
+\sds{} of the inner concatenation multiplied by the
+replication amount.
+
+\begin{typingrule}{Replication-Size}
+  If $i$ is the amount of the replication and $e_{in}$ has a
+  \sds{} of $t_{in}$, and $t$ is $i \times t_{in}$, then
+  $\verb|{| i \verb|{| e_{in}\verb|}}|$ shall have a
+  \sds{} of $t$.
+\end{typingrule}
+
+\section{Examples}
+
+Consider the following SystemVerilog declarations:
+
+\begin{minted}{verilog}
+logic [7:0] var8;      // 8-bit variable
+logic [31:0] var32;    // 32-bit variable
+logic [15:0] var16;    // 16-bit variable
+logic cond;            // condition signal
+logic [63:0] result;   // 64-bit result variable
+\end{minted}
+
+\subsection{Basic Expression Sizing}
+
+In the previous context, the expression \sv{var8} has
+\sds{} 8. Indeed, by rule \textbf{Operand-Size}:
+\begin{itemize}
+  \item \sv{var8} is an operand with size 8 (by declaration
+    \sv{logic [7:0] var8})
+\end{itemize}
+
+In the previous context, the expression \sv{var16[15:8] + 4'b1001} has
+\sds{} 8. Indeed, by rule \textbf{Binary-Left-Size}:
+
+\begin{itemize}
+  \item \sv{var16[15:8]} has \sds{} 8 (by rule
+    \textbf{Operand-Size}, part-select of 8 bits)
+  \item \sv{4'b1001} \mbr{} to 8 by rule \textbf{Resize}:
+    \begin{itemize}
+      \item \sv{4'b1001} has \sds{} 4 (by rule
+        \textbf{Operand-Size}, sized integer literal)
+      \item 8 is larger than 4
+      \item \sv{4'b1001} is atomically resizable (operands are
+        atomically resizable)
+    \end{itemize}
+\end{itemize}
+
+If we tried to apply rule \textbf{Binary-Right-Size} on the previous expression
+we would end up stuck resizing \sv{var16[15:8]} to 4 bits.
+
+In the previous context, the expression \sv{var16[5] + 8'hFF} has
+\sds{} 8. Indeed, by rule \textbf{Binary-Right-Size}:
+
+\begin{itemize}
+  \item \sv{8'hFF} has \sds{} 8 (by rule
+    \textbf{Operand-Size}, sized integer literal)
+  \item \sv{var16[5]} \mbr{} to 8 by rule \textbf{Resize}:
+    \begin{itemize}
+      \item \sv{var16[5]} has \sds{} 1 (by rule
+        \textbf{Operand-Size}, bit-select)
+      \item 8 is larger than 1
+      \item \sv{var16[5]} is atomically resizable (operands are
+        atomically resizable)
+    \end{itemize}
+\end{itemize}
+
+\subsection{Relational Expression Example}
+
+In the previous context, the expression \sv{var16 > 16'd100} has
+\sds{} 1. Indeed, by rule \textbf{Relational-Left-Size}:
+
+\begin{itemize}
+  \item \sv{var16} has \sds{} 16 (by rule
+    \textbf{Operand-Size}, declaration \sv{logic [15:0] var16})
+  \item \sv{16'd100} \mbr{} to 16 --- this is actually not
+    needed as it already has size 16:
+    \begin{itemize}
+      \item \sv{16'd100} has \sds{} 16 (by rule
+        \textbf{Operand-Size}, sized integer literal)
+    \end{itemize}
+\end{itemize}
+
+\subsection{Reduction Expression Example}
+
+In the previous context, the expression \sv{&var16[7:0]} has
+\sds{} 1. Indeed, by rule \textbf{Reduction-Size}:
+
+\begin{itemize}
+  \item \sv{var16[7:0]} has \sds{} 8 (by rule
+    \textbf{Operand-Size}, part-select of 8 bits)
+\end{itemize}
+
+\subsection{Replication Expression Example}
+
+In the previous context, the expression \sv{{4{var8}}} has
+\sds{} 32. Indeed, by rule \textbf{Replication-Size}:
+
+\begin{itemize}
+  \item The replication amount $i$ is 4
+  \item \sv{var8} has \sds{} 8 (by rule
+    \textbf{Operand-Size}, declaration \sv{logic [7:0] var8})
+  \item The result size is $4 \times 8 = 32$
+\end{itemize}
+
+\subsection{Complex Replication with Concatenation}
+
+In the previous context, the expression \sv{{2{var16[7:0], 4'hF}}} has
+\sds{} 24. Indeed, by rule \textbf{Replication-Size}:
+
+\begin{itemize}
+  \item The replication amount $i$ is 2
+  \item The inner concatenation \sv{{var16[7:0], 4'hF}} has
+    \sds{} 12 by rule \textbf{Concatenation-Size}:
+    \begin{itemize}
+      \item \sv{var16[7:0]} has \sds{} 8 (by rule
+        \textbf{Operand-Size}, part-select)
+      \item \sv{4'hF} has \sds{} 4 (by rule
+        \textbf{Operand-Size}, sized literal)
+      \item Sum is $8 + 4 = 12$
+    \end{itemize}
+  \item The result size is $2 \times 12 = 24$
+\end{itemize}
+
+\subsection{Assignment with Target Size Extension}
+
+In the previous context, the expression \sv{var32 = var16[7:0] + 1} has
+\sds{} 32. Indeed, by rule \textbf{Assignment-Left-Size}:
+
+\begin{itemize}
+  \item Left-hand side \sv{var32} has size 32 (by declaration
+    \sv{logic [31:0] var32})
+  \item Right-hand side \sv{var16[7:0] + 1} \mbr{} to 32 by
+    rule \textbf{Binary-Resize}:
+    \begin{itemize}
+      \item \sv{var16[7:0]} \mbr{} to 32 by rule
+        \textbf{Resize}:
+        \begin{itemize}
+          \item \sv{var16[7:0]} has \sds{} 8
+            (by rule \textbf{Operand-Size}, part-select)
+          \item 32 is larger than 8
+          \item \sv{var16[7:0]} is atomically resizable
+            (operands are atomically resizable)
+        \end{itemize}
+      \item \sv{1} \mbr{} to 32 (unsized literals have
+        \sds{} at least 32)
+    \end{itemize}
+\end{itemize}
+
+\subsection{Assignment with Result Truncation}
+
+In the previous context, the expression \sv{var8 = var32 + var16} has
+\sds{} 8. Indeed, by rule \textbf{Assignment-Right-Size}:
+
+\begin{itemize}
+  \item Left-hand side \sv{var8} has size 8 (by declaration
+    \sv{logic [7:0] var8})
+  \item Right-hand side \sv{var32 + var16} has \sds{}
+    32 by rule \textbf{Binary-Left-Size}:
+    \begin{itemize}
+      \item \sv{var32} has \sds{} 32 (by rule
+        \textbf{Operand-Size}, declaration \sv{logic [31:0] var32})
+      \item \sv{var16} \mbr{} to 32 by rule
+        \textbf{Resize}:
+        \begin{itemize}
+          \item \sv{var16} has \sds{} 16 (by rule
+            \textbf{Operand-Size}, declaration \sv{logic [15:0] var16})
+          \item 32 is larger than 16
+          \item \sv{var16} is atomically resizable (operands are atomically
+            resizable)
+        \end{itemize}
+    \end{itemize}
+  \item 8 is smaller than 32
+\end{itemize}
+
+\subsection{Conditional Expression with True Branch Determining Size}
+
+In the previous context, the expression \sv{cond ? var32 : var8} has
+\sds{} 32. Indeed, by rule \textbf{Conditional-Left-Size}:
+
+\begin{itemize}
+  \item Condition \sv{cond} has \sds{} 1 (by rule
+    \textbf{Operand-Size}, declaration \sv{logic cond})
+  \item True branch \sv{var32} has \sds{} 32 (by rule
+    \textbf{Operand-Size}, declaration \sv{logic [31:0] var32})
+  \item False branch \sv{var8} \mbr{} to 32 by rule
+    \textbf{Resize}:
+    \begin{itemize}
+      \item \sv{var8} has \sds{} 8 (by rule
+        \textbf{Operand-Size}, declaration \sv{logic [7:0] var8})
+      \item 32 is larger than 8
+      \item \sv{var8} is atomically resizable (operands are atomically
+        resizable)
+    \end{itemize}
+\end{itemize}
+
+\subsection{Conditional Expression with False Branch Determining Size}
+
+In the previous context, the expression \sv{cond ? var8 : var32} has
+\sds{} 32. Indeed, by rule
+\textbf{Conditional-Right-Size}:
+
+\begin{itemize}
+  \item Condition \sv{cond} has \sds{} 1 (by rule
+    \textbf{Operand-Size}, declaration \sv{logic cond})
+  \item False branch \sv{var32} has \sds{} 32 (by rule
+    \textbf{Operand-Size}, declaration \sv{logic [31:0] var32})
+  \item True branch \sv{var8} \mbr{} to 32 by rule
+    \textbf{Resize}:
+    \begin{itemize}
+      \item \sv{var8} has \sds{} 8 (by rule
+        \textbf{Operand-Size}, declaration \sv{logic [7:0] var8})
+      \item 32 is larger than 8
+      \item \sv{var8} is atomically resizable (operands are atomically
+        resizable)
+    \end{itemize}
+\end{itemize}
+
+\subsection{Conditional Expression with Context-Driven Sizing}
+
+In the previous context, the expression
+\sv{result = cond ? var32[7:0] : var32[15:8]} has \sds{}
+64. Indeed, by rule \textbf{Assignment-Left-Size}:
+
+\begin{itemize}
+  \item Left-hand side \sv{result} has size 64 (by declaration
+    \sv{logic [63:0] result})
+  \item Right-hand side \sv{cond ? var32[7:0] : var32[15:8]}
+    \mbr{} to 64 by rule \textbf{Conditional-Resize}:
+    \begin{itemize}
+      \item Condition \sv{cond} has \sds{} 1 (by rule
+        \textbf{Operand-Size}, declaration \sv{logic cond})
+      \item True branch \sv{var32[7:0]} \mbr{} to 64 by rule
+        \textbf{Resize}:
+        \begin{itemize}
+          \item \sv{var32[7:0]} has \sds{} 8 (by rule
+            \textbf{Operand-Size}, part-select)
+          \item 64 is larger than 8
+          \item \sv{var32[7:0]} is atomically resizable (operands are
+            atomically resizable)
+        \end{itemize}
+      \item False branch \sv{var32[15:8]} \mbr{} to 64 by
+        rule \textbf{Resize}:
+        \begin{itemize}
+          \item \sv{var32[15:8]} has \sds{} 8 (by rule
+            \textbf{Operand-Size}, part-select)
+          \item 64 is larger than 8
+          \item \sv{var32[15:8]} is atomically resizable (operands are
+            atomically resizable)
+        \end{itemize}
+    \end{itemize}
+\end{itemize}
+
+\end{document}

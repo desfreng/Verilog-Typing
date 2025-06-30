@@ -261,5 +261,4 @@ Module Algo.
       by (extensionality p; apply (synth_check_inj_f _ _ _ _ Hs Hc)).
     subst. assumption.
   Qed.
-
 End Algo.
