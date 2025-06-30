@@ -1,6 +1,6 @@
-(lang dune 3.17)
+(lang dune 3.19)
 
-(using coq 0.9)
+(using coq 0.8)
 
 (name VerilogTyping)
 
@@ -9,4 +9,5 @@
 (package
  (name VerilogTyping)
  (depends
-    coq))
+  coq
+  (coq2html :with-doc)))

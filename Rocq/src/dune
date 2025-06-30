@@ -5,3 +5,34 @@
  (package VerilogTyping)
  (theories Stdlib Ltac2))
 
+(rule
+ (target html)
+ (package VerilogTyping)
+ (deps
+  (:v
+   (glob_files *.v))
+  (:glob
+   (glob_files *.glob)))
+ (action
+  (progn
+   (run rm -fr html)
+   (run mkdir -p html)
+   (run
+    coq2html
+    -base
+    Verilog
+    %{v}
+    %{glob}
+    -d
+    html
+    -short-names
+    -external
+    https://rocq-prover.org/doc/V9.0.0/corelib/
+    Corelib
+    -external
+    https://rocq-prover.org/doc/V9.0.0/stdlib/
+    Stdlib))))
+
+(alias
+ (name doc)
+ (deps html))
