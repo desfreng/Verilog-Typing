@@ -1,4 +1,5 @@
 \documentclass{article}
+%\usepackage[T1]{fontenc}
 \usepackage[a4paper, margin=2cm]{geometry}
 \usepackage[english]{babel}
 \usepackage[mono=false]{libertine}
@@ -12,7 +13,12 @@
 
 \usepackage{amsmath}
 \usepackage{amssymb}
+\usepackage{mathabx}
+\usepackage{xcolor}
+
 \usepackage{minted}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
 
 \setminted{
   frame=lines,
@@ -32,6 +38,50 @@
 {\par\noindent\textbf{Rule (#1):} }%
 {\par}
 
+\newcommand{\binOp}{\texttt{+}, \texttt{-}, \texttt{*}, \texttt{/}, \texttt{\%},
+\texttt{\&}, \texttt{|}, \texttt{\^{}}, \texttt{\^{}\tild},
+\texttt{\tild\^{}}}
+\newcommand{\unOp}{\texttt{+}, \texttt{-}, \texttt{\tild}, \texttt{++},
+  \texttt{--}}
+\newcommand{\shiftOp}{\texttt{>>}, \texttt{<}\texttt{<}, \texttt{**},
+  \texttt{>>>}, \texttt{<}\texttt{<}\texttt{<}}
+\newcommand{\compOp}{\texttt{===}, \texttt{!==}, \texttt{==?}, \texttt{!=?},
+  \texttt{==}, \texttt{!=}, \texttt{>}, \texttt{>=}, \texttt{<}, \texttt{<=}}
+\newcommand{\logicOp}{\texttt{\&\&}, \texttt{||}, \texttt{->}, \texttt{<->}}
+\newcommand{\redOp}{\texttt{\&}, \texttt{\tild\&}, \texttt{|}, \texttt{\tild|},
+\texttt{\^{}}, \texttt{\tild\^{}}, \texttt{\^{}\tild}, \texttt{!}}
+\newcommand{\assignOp}{\texttt{=}, \texttt{+=}, \texttt{-=}, \texttt{*=},
+\texttt{/=}, \texttt{\%=}, \texttt{\&=}, \texttt{|=}, \texttt{\^{}=}}
+\newcommand{\shiftAssignOp}{\texttt{<}\texttt{<}\texttt{=}, \texttt{>>=},
+  \texttt{<}\texttt{<}\texttt{<=}, \texttt{>>>=}}
+
+\makeatletter
+\newcommand\incircbin
+{%
+  \mathpalette\@incircbin
+}
+\newcommand\@incircbin[2]
+{%
+  \mathbin%
+  {%
+    \ooalign{\hidewidth$#1#2$\hidewidth\crcr$#1\ovoid$}%
+  }%
+}
+\newcommand{\circledeq}{\incircbin{=}}
+\makeatother
+
+
+\renewcommand{\Comment}[1]{\State \textcolor{gray}{// #1}}
+
+\algnewcommand\algorithmicswitch{\textbf{switch}}
+\algnewcommand\algorithmicendswitch{\textbf{end switch}}
+\algnewcommand\algorithmicwhen{\textbf{when}}
+\algnewcommand\algorithmicis{\textbf{is}}
+\algblockdefx{SWITCH}{ENDSWITCH}[1]{\algorithmicswitch\ #1}%
+{\algorithmicendswitch}
+\algblockdefx{WHEN}{ENDWHEN}[2][]{\algorithmicwhen\ #1 \algorithmicis\ #2:}{}
+
+
 \begin{document}
 
 \section{Expression bit lengths}%
@@ -46,7 +96,6 @@ important if consistent results are to be achieved. The following typing system
 provides precise rules for determining expression bit lengths in all situations.
 
 \subsection{Bidirectional typing operations}%
-\label{bidirectional-typing-operations}
 
 The bit length of expressions is defined using the fundamental concepts:
 
@@ -61,13 +110,11 @@ The bit length of expressions is defined using the fundamental concepts:
 \end{description}
 
 \subsection{Expression categories for resizing}%
-\label{expression-categories-for-resizing}
 
 SystemVerilog expressions shall be categorized into two types based on their
 resizing behavior:
 
 \subsubsection{Atomically resizable expressions}%
-\label{atomically-resizable-expressions}
 
 Atomically resizable expressions \mbr{} without affecting their
 internal operand sizes. The following expressions are atomically resizable:
@@ -75,19 +122,11 @@ internal operand sizes. The following expressions are atomically resizable:
 \begin{itemize}
   \item Operands as defined in 11.2 (nets, variables, literals, function
     calls, etc.)
-  \item Comparison expressions: \texttt{===}, \texttt{!==}, \texttt{==?},
-    \texttt{!=?}, \texttt{==}, \texttt{!=}, \texttt{>}, \texttt{>=}, \texttt{<},
-    \texttt{<=}
-  \item Logical expressions: \texttt{\&\&}, \texttt{||}, \texttt{->},
-    \texttt{<->}
-  \item Reduction expressions: \texttt{\&}, \texttt{\tild\&}, \texttt{|},
-    \texttt{\tild|}, \texttt{\^{}}, \texttt{\tild\^{}}, \texttt{\^{}\tild},
-    \texttt{!}
-  \item Assignment expressions: \texttt{=}, \texttt{+=}, \texttt{-=},
-    \texttt{*=}, \texttt{/=}, \texttt{\%=}, \texttt{\&=},
-    \texttt{|=}, \texttt{\^{}=}
-  \item Shift assignment expressions: \texttt{<<=}, \texttt{>>=}, \texttt{<<<=},
-    \texttt{>>>=}
+  \item Comparison expressions: \compOp{}
+  \item Logical expressions: \logicOp{}
+  \item Reduction expressions: \redOp{}
+  \item Assignment expressions: \assignOp{}
+  \item Shift assignment expressions: \shiftAssignOp
   \item Concatenation expressions: \texttt{\string{\dots\string}}
   \item Replication expressions: \texttt{\string{.\string{\dots\string}\string}}
   \item Set membership expressions: \texttt{inside}
@@ -103,7 +142,6 @@ shall remain unmodified.
 \end{typingrule}
 
 \subsubsection{Non-atomically resizable expressions}%
-\label{non-atomically-resizable-expressions}
 
 Non-atomically resizable expressions propagate resizing to their operands when
 a target size is specified. These expressions require their operands to be
@@ -111,15 +149,11 @@ adjusted to specific sizes based on the resizing rules. The following expression
 are not atomically resizable:
 
 \begin{itemize}
-  \item Binary and bitwise expression:  \texttt{+}, \texttt{-}, \texttt{*},
-    \texttt{/}, \texttt{\%}, \texttt{\&}, \texttt{|}, \texttt{\^{}},
-    \texttt{\^{}\tild}, \texttt{\tild\^{}}
+  \item Binary and bitwise expression: \binOp{}
   \item Unary arithmetic, bitwise, increment and decrement expressions:
-    \texttt{+}, \texttt{-}, \texttt{\tild}, \texttt{++}, \texttt{--}
-  \item Shift and power expression: \texttt{>>}, \texttt{<}\texttt{<},
-    \texttt{**}, \texttt{>>>}, \texttt{<}\texttt{<}\texttt{<}
+    \unOp{}
+  \item Shift and power expression: \shiftOp{}
   \item Conditional expression: \texttt{?:}
-
 \end{itemize}
 
 Binary arithmetic and bitwise expressions propagate the target size to both
@@ -153,13 +187,11 @@ while the condition remains \emph{self-determined}:
 \end{typingrule}
 
 \subsection{\emph{Self-determined} expression sizing rules}%
-\label{self-determined-expression-sizing-rules}
 
 The \sds{} of an expression, solely based on its internal
 structure and operands, shall be computed according to the following rules:
 
 \subsubsection{Operands}%
-\label{operands}
 
 For operands as defined in 11.2, the \sds{} is always
 well-defined and determined by their declaration, literal specification, or
@@ -176,8 +208,8 @@ Examples:
     \verb|32'd123| has a \sds{} of 32,
   \item Unsized integer literals: \verb|123|, \verb|'hABC| have a
     \sds{} of at least 32 bits,
-  \item Parameters, nets, variables and structure fields have their size as
-    defined by their declaration --- \verb|logic [15:0] data| has a
+  \item Parameters, nets, variables and structure fields have their size
+    defined by their declaration: \verb|logic [15:0] data| has a
     \sds{} of 16,
   \item Bit-select: \verb|data[5]| has a \sds{} of 1,
   \item Part-select: \verb|data[7:0]| has a \sds{} of 8,
@@ -193,7 +225,6 @@ Examples:
 \end{itemize}
 
 \subsubsection{Binary arithmetic and bitwise expressions}%
-\label{binary-arithmetic-and-bitwise-expressions}
 
 For binary arithmetic and bitwise expressions, the \sds{}
 is the maximum of the operand sizes. The smaller operand is \emph{resized}
@@ -210,7 +241,6 @@ to match the larger operand's size.
 \end{typingrule}
 
 \subsubsection{Unary expressions}%
-\label{unary-expressions}
 
 For unary expressions (Unary arithmetic, unary bitwise negation and unary
 increment and decrement), the \sds{} is identical to the
@@ -222,7 +252,6 @@ operand size.
 \end{typingrule}
 
 \subsubsection{Relational and equality expressions}%
-\label{relational-and-equality-expressions}
 
 For relational and equality expressions, the \sds{} is
 always 1 bit. The smaller operand shall be resized to match the larger operand's
@@ -239,7 +268,6 @@ size for comparison purposes.
 \end{typingrule}
 
 \subsubsection{Logical expressions}%
-\label{logical-expressions}
 
 For binary logical expressions, the \sds{} is always 1 bit.
 All operands are \emph{self-determined}.
@@ -251,7 +279,6 @@ All operands are \emph{self-determined}.
 \end{typingrule}
 
 \subsubsection{Reduction expressions}%
-\label{reduction-expressions}
 
 For reduction expressions, including \texttt{!}, the \sds{}
 is always 1 bit. The operand is \emph{self-determined}.
@@ -262,7 +289,6 @@ is always 1 bit. The operand is \emph{self-determined}.
 \end{typingrule}
 
 \subsubsection{Shift and power expressions}%
-\label{shift-and-power-expressions}
 
 For shift and power expressions, the \sds{} is determined
 by the left operand. The right operand shall be \emph{self-determined}.
@@ -274,7 +300,6 @@ by the left operand. The right operand shall be \emph{self-determined}.
 \end{typingrule}
 
 \subsubsection{Assignment expressions}%
-\label{assignment-expressions}
 
 For assignment expressions, the \sds{} is determined by the
 left-hand side. When the left-hand side has a larger size than the right-hand
@@ -302,7 +327,6 @@ For shift assignment expressions, the right operand is always
 \end{typingrule}
 
 \subsubsection{Conditional expressions}%
-\label{conditional-expressions}
 
 For conditional expressions using the \texttt{?:} operator, the
 \sds{} is the maximum size of the two branch expressions.
@@ -324,7 +348,6 @@ shall be \emph{self-determined}.
 \end{typingrule}
 
 \subsubsection{Concatenation expressions}%
-\label{concatenation-expressions}
 
 For concatenation expressions, the \sds{} is the sum of the
 \emph{self-determined sizes} of all operands.
@@ -337,7 +360,6 @@ For concatenation expressions, the \sds{} is the sum of the
 \end{typingrule}
 
 \subsubsection{Replication expressions}%
-\label{replication-expressions}
 
 The \sds{} of a replication is the
 \sds{} of the inner concatenation multiplied by the
@@ -446,8 +468,8 @@ In the previous context, the expression \sv{{4{var8}}} has
 
 \subsection{Complex Replication with Concatenation}
 
-In the previous context, the expression \sv{{2{var16[7:0], 4'hF}}} has
-\sds{} 24. Indeed, by rule \textbf{Replication-Size}:
+In the previous context, the expression \sv{{2{var16[7:0], 4'hF}}} has \sds{}
+24. With rule \textbf{Replication-Size}:
 
 \begin{itemize}
   \item The replication amount $i$ is 2
@@ -466,7 +488,7 @@ In the previous context, the expression \sv{{2{var16[7:0], 4'hF}}} has
 \subsection{Assignment with Target Size Extension}
 
 In the previous context, the expression \sv{var32 = var16[7:0] + 1} has
-\sds{} 32. Indeed, by rule \textbf{Assignment-Left-Size}:
+\sds{} 32. With rule \textbf{Assignment-Left-Size}:
 
 \begin{itemize}
   \item Left-hand side \sv{var32} has size 32 (by declaration
@@ -591,5 +613,188 @@ In the previous context, the expression
         \end{itemize}
     \end{itemize}
 \end{itemize}
+
+\appendix
+\section{Algorithm Overview}
+
+This appendix presents an algorithm to compute the size of all sub-expressions
+of a SystemVerilog expression. The algorithm operates in two phases:
+
+First, the \sds{} of the expression is computed using the algorithm
+\ref{alg:determine}. This algorithm traverses the expression
+tree bottom-up to determine the natural size of each expression based solely on
+its internal structure and operands.
+
+Second, the expression and all its sub-expressions are resized to the target
+size using the algorithm \ref{alg:propagate}. During this
+propagation phase, all self-determined sub-expressions are resized to their
+\sds{}, while the other sub-expressions inherit their size from the surrounding
+context.
+
+The algorithm runs in linear time with respect to the number of operations in
+the SystemVerilog expression. The reasoning implemented in this algorithm
+follows the typing rules explained in the previous
+\autoref{expression-bit-lengths}.
+
+\begin{algorithm}
+  \caption{Compute the \sds{} of an expression.}
+  \label{alg:determine}
+  \begin{algorithmic}[1]
+    \Procedure{Determine}{\texttt{expr}}
+    \Require \texttt{expr} must be a SystemVerilog expression.
+    \Ensure The output is the \sds{} of \texttt{expr}.
+    \SWITCH{\texttt{expr}}
+    \WHEN[\texttt{expr}]{operand}
+    \State The \sds{} is the operand's declared or literal size.
+    \ENDWHEN
+    \WHEN[\texttt{expr}]{$\texttt{lhs}\oplus\texttt{rhs}$}
+    \Comment{$\oplus$ can be \binOp{}}
+    \State Compute the \sds{} of \texttt{lhs}, as \texttt{lhs\_size}.
+    \State Compute the \sds{} of \texttt{rhs}, as \texttt{rhs\_size}.
+    \State The \sds{} of \texttt{expr} is $\max\big(\texttt{lhs\_size}, \texttt{rhs\_size}\big)$.
+    \ENDWHEN
+    \WHEN[\texttt{expr}]{$\oplus\texttt{arg}$}
+    \Comment{$\oplus$ can be \unOp{}}
+    \State Compute the \sds{} of \texttt{arg}, as \texttt{arg\_size}.
+    \State The \sds{} of \texttt{expr} is \texttt{arg\_size}.
+    \ENDWHEN
+    \WHEN[\texttt{expr}]{$\texttt{lhs}\oplus\texttt{rhs}$}
+    \Comment{$\oplus$ can be \compOp{}}
+    \State The \sds{} of \texttt{expr} is $1$ bit.
+    \ENDWHEN
+    \WHEN[\texttt{expr}]{$\texttt{lhs}\oplus\texttt{rhs}$}
+    \Comment{$\oplus$ can be \logicOp{}}
+    \State The \sds{} of \texttt{expr} is $1$ bit.
+    \ENDWHEN
+    \WHEN[\texttt{expr}]{$\oplus\texttt{arg}$}
+    \Comment{$\oplus$ can be \redOp{}}
+    \State The \sds{} of \texttt{expr} is $1$ bit.
+    \ENDWHEN
+    \WHEN[\texttt{expr}]{$\texttt{lhs}\oplus\texttt{rhs}$}
+    \Comment{$\oplus$ can be \shiftOp{}}
+    \State Compute the \sds{} of \texttt{lhs} as \texttt{lhs\_size}.
+    \State The \sds{} of \texttt{expr} is \texttt{lhs\_size}.
+    \ENDWHEN
+    \WHEN[\texttt{expr}]{$\texttt{lval}\circledeq\texttt{rhs}$}
+    \Comment{$\circledeq$ can be \assignOp{}, \shiftAssignOp{}}
+    \State Retrieve the size of the left-hand side variable \texttt{lval} as \texttt{lval\_size}.
+    \State The \sds{} of \texttt{expr} is \texttt{lval\_size}.
+    \ENDWHEN
+    \WHEN[\texttt{expr}]{$\texttt{cond}~\texttt{?}~\texttt{true\_expr}~\texttt{:}~\texttt{false\_expr}$}
+    \State Compute the \sds{} of \texttt{true\_expr}, as \texttt{true\_size}.
+    \State Compute the \sds{} of \texttt{false\_expr}, as \texttt{false\_size}.
+    \State The \sds{} of \texttt{expr} is $\max\big(\texttt{true\_size}, \texttt{false\_size}\big)$.
+    \ENDWHEN
+    \WHEN[\texttt{expr}]{$\texttt{\{}\texttt{expr}_{1}\texttt{,}\texttt{expr}_{2}\texttt{,}\ldots\texttt{,}\texttt{expr}_{N}\texttt{\}}$}
+    \For{$i \in \{1, \dots, N\}$}
+    \State Compute the \sds{} of \texttt{expr}$_{i}$, as \texttt{expr\_i\_size}.
+    \EndFor
+    \State The \sds{} of \texttt{expr} is $\texttt{expr\_1\_size} + \dots + \texttt{expr\_N\_size}$.
+    \ENDWHEN
+    \WHEN[\texttt{expr}]{$\texttt{\{}N\texttt{\{}\texttt{inner\_expr}\texttt{\}}\texttt{\}}$}
+    \State Compute the \sds{} of \texttt{inner\_expr}, as \texttt{inner\_size}.
+    \State The \sds{} of \texttt{expr} is $N \times \texttt{inner\_size}$.
+    \ENDWHEN
+    \ENDSWITCH
+    \EndProcedure
+  \end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+  \caption{Resize an expression, propagating the size.}
+  \label{alg:propagate}
+  \begin{algorithmic}[1]
+    \Procedure{Propagate}{\texttt{expr}, \texttt{target\_size}}
+    \Require \texttt{expr} is a SystemVerilog expression. \texttt{target\_size} is the size \texttt{expr} will be resized to.
+    \Ensure All sub-expressions of \texttt{expr} are annotated with their final size in \texttt{expr}.
+    \SWITCH{\texttt{expr}}
+    \WHEN[\texttt{expr}]{operand}
+    \State Annotate \texttt{expr} with \texttt{target\_size}.
+    \ENDWHEN
+    \WHEN[\texttt{expr}]{$\texttt{lhs}\oplus\texttt{rhs}$}
+    \Comment{$\oplus$ can be \binOp{}}
+    \State Propagate \texttt{target\_size} into \texttt{lhs}.
+    \State Propagate \texttt{target\_size} into \texttt{rhs}.
+    \State Annotate \texttt{expr} with \texttt{target\_size}.
+    \ENDWHEN
+    \WHEN[\texttt{expr}]{$\oplus\texttt{arg}$}
+    \Comment{$\oplus$ can be \unOp{}}
+    \State Propagate \texttt{target\_size} into \texttt{arg}.
+    \State Annotate \texttt{expr} with \texttt{target\_size}.
+    \ENDWHEN
+    \WHEN[\texttt{expr}]{$\texttt{lhs}\oplus\texttt{rhs}$}
+    \Comment{$\oplus$ can be \compOp{}}
+    \State Compute the \sds{} of \texttt{lhs}, as \texttt{lhs\_size}.
+    \State Compute the \sds{} of \texttt{rhs}, as \texttt{rhs\_size}.
+    \State Let \texttt{arg\_size} be $\max\big(\texttt{lhs\_size}, \texttt{rhs\_size}\big)$.
+    \State Propagate \texttt{arg\_size} into \texttt{lhs}.
+    \State Propagate \texttt{arg\_size} into \texttt{rhs}.
+    \State Annotate \texttt{expr} with \texttt{target\_size}.
+    \ENDWHEN
+    \WHEN[\texttt{expr}]{$\texttt{lhs}\oplus\texttt{rhs}$}
+    \Comment{$\oplus$ can be \logicOp{}}
+    \State Compute the \sds{} of \texttt{lhs}, as \texttt{lhs\_size}.
+    \State Propagate \texttt{lhs\_size} into \texttt{lhs}.
+    \State Compute the \sds{} of \texttt{rhs}, as \texttt{rhs\_size}.
+    \State Propagate \texttt{rhs\_size} into \texttt{rhs}.
+    \State Annotate \texttt{expr} with \texttt{target\_size}.
+    \ENDWHEN
+    \WHEN[\texttt{expr}]{$\oplus\texttt{arg}$}
+    \Comment{$\oplus$ can be \redOp{}}
+    \State Compute the \sds{} of \texttt{arg}, as \texttt{arg\_size}.
+    \State Propagate \texttt{arg\_size} into \texttt{arg}.
+    \State Annotate \texttt{expr} with \texttt{target\_size}.
+    \ENDWHEN
+    \WHEN[\texttt{expr}]{$\texttt{lhs}\oplus\texttt{rhs}$}
+    \Comment{$\oplus$ can be \shiftOp{}}
+    \State Propagate \texttt{target\_size} into \texttt{lhs}.
+    \State Compute the \sds{} of \texttt{rhs}, as \texttt{rhs\_size}.
+    \State Propagate \texttt{rhs\_size} into \texttt{rhs}.
+    \State Annotate \texttt{expr} with \texttt{target\_size}.
+    \ENDWHEN
+    \algstore{propagateAlg}
+  \end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+  \begin{algorithmic}[1]
+    \algrestore{propagateAlg}
+    \WHEN[\texttt{expr}]{$\texttt{lval}\circledeq\texttt{rhs}$}
+    \Comment{$\circledeq$ can be \assignOp{}}
+    \State Let \texttt{lval\_size} be the size of the left-hand side \texttt{lval}.
+    \State Compute the \sds{} of \texttt{rhs}, as \texttt{rhs\_size}.
+    \State Let \texttt{arg\_size} be $\max\big(\texttt{lval\_size}, \texttt{rhs\_size}\big)$.
+    \State Propagate \texttt{arg\_size} into \texttt{rhs}.
+    \State Annotate \texttt{expr} with \texttt{target\_size}.
+    \ENDWHEN
+    \WHEN[\texttt{expr}]{$\texttt{lval}\circledeq\texttt{rhs}$}
+    \Comment{$\circledeq$ can be \shiftAssignOp{}}
+    \State Compute the \sds{} of \texttt{rhs}, as \texttt{rhs\_size}.
+    \State Propagate \texttt{rhs\_size} into \texttt{rhs}.
+    \State Annotate \texttt{expr} with \texttt{target\_size}.
+    \ENDWHEN
+    \WHEN[\texttt{expr}]{$\texttt{cond}~\texttt{?}~\texttt{true\_expr}~\texttt{:}~\texttt{false\_expr}$}
+    \State Compute the \sds{} of \texttt{cond}, as \texttt{cond\_size}.
+    \State Propagate \texttt{cond\_size} into \texttt{cond}.
+    \State Propagate \texttt{target\_size} into \texttt{true\_expr}.
+    \State Propagate \texttt{target\_size} into \texttt{false\_expr}.
+    \State Annotate \texttt{expr} with \texttt{target\_size}.
+    \ENDWHEN
+    \WHEN[\texttt{expr}]{$\texttt{\{}\texttt{expr}_{1}\texttt{,}\texttt{expr}_{2}\texttt{,}\ldots\texttt{,}\texttt{expr}_{N}\texttt{\}}$}
+    \For{$i \in \{1, \ldots, N\}$}
+    \State Compute the \sds{} of \texttt{expr}$_{i}$, as \texttt{expr\_i\_size}.
+    \State Propagate \texttt{expr\_i\_size} into \texttt{expr}$_{i}$.
+    \EndFor
+    \State Annotate \texttt{expr} with \texttt{target\_size}.
+    \ENDWHEN
+    \WHEN[\texttt{expr}]{$\texttt{\{}N\texttt{\{}\texttt{inner\_expr}\texttt{\}}\texttt{\}}$}
+    \State Compute the \sds{} of \texttt{inner\_expr}, as \texttt{inner\_size}.
+    \State Propagate \texttt{inner\_size} into \texttt{inner\_expr}.
+    \State Annotate \texttt{expr} with \texttt{target\_size}.
+    \ENDWHEN
+    \ENDSWITCH
+    \EndProcedure
+  \end{algorithmic}
+\end{algorithm}
 
 \end{document}
