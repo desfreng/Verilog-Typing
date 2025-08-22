@@ -20,8 +20,6 @@ Module ExprPath.
       IsPath rhs p -> IsPath (EBinOp lhs rhs) (1 :: p)
   | P_UnOpArg : forall arg p,
       IsPath arg p -> IsPath (EUnOp arg) (0 :: p)
-  | P_CastArg : forall arg p,
-      IsPath arg p -> IsPath (ECast arg) (0 :: p)
   | P_LhsCompOp : forall lhs rhs p,
       IsPath lhs p -> IsPath (EComp lhs rhs) (0 :: p)
   | P_RhsCompOp : forall lhs rhs p,
@@ -56,7 +54,6 @@ Module ExprPath.
     | EBinOp lhs _, 0 :: p => sub_expr lhs p
     | EBinOp _ rhs, 1 :: p => sub_expr rhs p
     | EUnOp arg, 0 :: p => sub_expr arg p
-    | ECast arg, 0 :: p => sub_expr arg p
     | EComp lhs _, 0 :: p => sub_expr lhs p
     | EComp _ rhs, 1 :: p => sub_expr rhs p
     | ELogic lhs _, 0 :: p => sub_expr lhs p

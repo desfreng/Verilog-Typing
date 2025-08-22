@@ -22,7 +22,6 @@ Module TypeSystem.
 
   Variant Resizable : Expr -> Set :=
   | ResAtom : forall op, Resizable (EAtom op)
-  | ResCast : forall e, Resizable (ECast e)
   | ResComp : forall lhs rhs, Resizable (EComp lhs rhs)
   | ResLogic : forall lhs rhs, Resizable (ELogic lhs rhs)
   | ResRed : forall e, Resizable (EReduction e)
@@ -111,11 +110,6 @@ Module TypeSystem.
       e ==> t -| fe ->
       f = Unary t fe ->
       EUnOp e ==> t -| f
-
-  | CastS : forall e t f fe,
-      e ==> t -| fe ->
-      f = Unary t fe ->
-      ECast e ==> t -| f
 
   | LCompS : forall a b t f fa fb,
       a ==> t -| fa ->
@@ -574,7 +568,6 @@ Module TypeSystem.
         eapply LBinOpS; eassumption || reflexivity.
       + destruct (synth_can_check _ _ _ _ H0 H2). eexists. simpl. rewrite H1.
         eapply RBinOpS; eassumption || reflexivity.
-    - eexists. econstructor; eassumption || reflexivity.
     - eexists. econstructor; eassumption || reflexivity.
     - destruct (max_dec_bis (determine e1) (determine e2)) as [[H1 H2]|[H1 H2]].
       + destruct (synth_can_check _ _ _ _ H H2). eexists. simpl.

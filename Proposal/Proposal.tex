@@ -631,7 +631,8 @@ propagation phase, all self-determined sub-expressions are resized to their
 \sds{}, while the other sub-expressions inherit their size from the surrounding
 context.
 
-The algorithm runs in linear time with respect to the number of operations in
+Assuming that call to the \textsc{Determine} function are cached, the algorithm
+runs in linear time with respect to the number of operations in
 the SystemVerilog expression. The reasoning implemented in this algorithm
 follows the typing rules explained in the previous
 \autoref{expression-bit-lengths}.

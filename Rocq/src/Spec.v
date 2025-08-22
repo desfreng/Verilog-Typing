@@ -20,7 +20,6 @@ Module Spec.
       | EAtom op => op
       | EBinOp lhs rhs => max (determine lhs) (determine rhs)
       | EUnOp arg => determine arg
-      | ECast arg => determine arg
       | EComp _ _ => 1
       | ELogic _ _ => 1
       | EReduction _ => 1
@@ -43,10 +42,6 @@ Module Spec.
     Definition unop_propagate := forall p arg,
         e @[p] = Some (EUnOp arg) ->
         propagate (p ++ [0]) = propagate p.
-
-    Definition cast_propagate := forall p arg,
-        e @[p] = Some (ECast arg) ->
-        propagate (p ++ [0]) = determine arg.
 
     Definition comp_propagate := forall p lhs rhs,
         e @[p] = Some (EComp lhs rhs) ->
@@ -91,9 +86,9 @@ Module Spec.
     Definition toplevel_propagate := propagate [] = determine e.
 
     Definition propagate_def :=
-      toplevel_propagate /\ binop_propagate /\ unop_propagate /\ cast_propagate /\
-        comp_propagate /\ logic_propagate /\ red_propagate /\ shift_propagate /\
-        assign_propagate /\ cond_propagate /\ concat_propagate /\ repl_propagate.
+      toplevel_propagate /\ binop_propagate /\ unop_propagate /\ comp_propagate /\
+        logic_propagate /\ red_propagate /\ shift_propagate /\ assign_propagate /\
+        cond_propagate /\ concat_propagate /\ repl_propagate.
   End SpecDef.
 
   Create HintDb Spec discriminated.
@@ -101,7 +96,6 @@ Module Spec.
   Hint Unfold toplevel_propagate : Spec.
   Hint Unfold binop_propagate : Spec.
   Hint Unfold unop_propagate : Spec.
-  Hint Unfold cast_propagate : Spec.
   Hint Unfold comp_propagate : Spec.
   Hint Unfold logic_propagate : Spec.
   Hint Unfold red_propagate : Spec.
@@ -117,7 +111,7 @@ Module Spec.
   Ltac prop_split :=
     match goal with
     | [ H: propagate_def _ _ |- _ ] =>
-        destruct H as [?HTopLevel [?HBinOp [?HUnOp [?HCast [?HComp [?HLogic [?HRed [?HShift [?HAssign [?HCond [?HConcat ?HRepl]]]]]]]]]]]
+        destruct H as [?HTopLevel [?HBinOp [?HUnOp [?HComp [?HLogic [?HRed [?HShift [?HAssign [?HCond [?HConcat ?HRepl]]]]]]]]]]
     end
   .
 
@@ -128,8 +122,6 @@ Module Spec.
     | [ F: _ @[_] = Some (EBinOp _ _), H: binop_propagate _ _ |- _ ] =>
         specialize (H _ _ _ F); destruct H
     | [ F: _ @[_] = Some (EUnOp _), H: unop_propagate _ _ |- _ ] =>
-        specialize (H _ _ F)
-    | [ F: _ @[_] = Some (ECast _), H: cast_propagate _ _ |- _ ] =>
         specialize (H _ _ F)
     | [ F: _ @[_] = Some (EComp _ _), H: comp_propagate _ _ |- _ ] =>
         specialize (H _ _ _ F _ (eq_refl _)); destruct H

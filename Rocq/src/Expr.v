@@ -12,7 +12,6 @@ Module Expr.
   | EAtom (size: nat)
   | EBinOp (lhs rhs: Expr)
   | EUnOp (arg: Expr)
-  | ECast (arg: Expr)
   | EComp (lhs rhs: Expr)
   | ELogic (lhs rhs: Expr)
   | EReduction (arg: Expr)
@@ -49,9 +48,6 @@ Module Expr.
     Hypothesis HPUnOp:
       forall arg, P arg -> P (EUnOp arg).
 
-    Hypothesis HPCast:
-      forall arg, P arg -> P (ECast arg).
-
     Hypothesis HPComp:
       forall lhs rhs, P lhs -> P rhs -> P (EComp lhs rhs).
 
@@ -81,7 +77,6 @@ Module Expr.
       | EAtom o => HPAtom o
       | EBinOp lhs rhs => HPBinOp _ _ (Expr_rect lhs) (Expr_rect rhs)
       | EUnOp arg => HPUnOp _ (Expr_rect arg)
-      | ECast arg => HPCast _ (Expr_rect arg)
       | EComp lhs rhs => HPComp _ _ (Expr_rect lhs) (Expr_rect rhs)
       | ELogic lhs rhs => HPLogic _ _ (Expr_rect lhs) (Expr_rect rhs)
       | EReduction arg => HPReduction _ (Expr_rect arg)
