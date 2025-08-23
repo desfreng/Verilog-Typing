@@ -9,6 +9,7 @@ From Verilog Require Import TaggedExpr.
 From Verilog Require Import TaggedExprPath.
 From Verilog Require Import TypeSystem.
 From Verilog Require Import Spec.
+From Verilog Require Import Equiv.
 From Verilog Require Import Utils.
 
 Import Nat.
@@ -20,6 +21,7 @@ Import ExprPath.
 Import TaggedExpr.
 Import TaggedExprPath.
 Import TypeSystem.
+Import Equiv.
 Import Utils.
 Import Learn.
 
@@ -188,7 +190,7 @@ Module Algo.
           learn (synth_check_determine_order _ _ _ _ _ _ H F (le_refl _));
           try antisym; subst
       | [ H: ?e <== ?t -| _, F: ?t <= Spec.determine ?e |- _ ] =>
-          learn (synth_and_order _ _ _ H F); subst
+          learn (Equiv.synth_and_order _ _ _ H F); subst
       | [ H : context [Spec.determine _] |- _ ] => rewrite up_top_size in H
       end
     .

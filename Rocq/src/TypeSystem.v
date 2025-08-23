@@ -6,7 +6,7 @@ From Stdlib Require Export Lia.
 
 From Verilog Require Import Expr.
 From Verilog Require Import ExprPath.
-From Verilog Require Import Spec.
+(* From Verilog Require Import Spec. *)
 From Verilog Require Import Utils.
 
 Import ListNotations.
@@ -15,7 +15,7 @@ Import Nat.
 Import Expr.
 Import ExprPath.
 Import Path.
-Import Spec.
+(* Import Spec. *)
 Import Utils.
 
 Module TypeSystem.
@@ -559,102 +559,62 @@ Module TypeSystem.
     intros. destruct (f_sub_exp e). firstorder.
   Qed.
 
-  Theorem synth_determine : forall e, exists f, e ==> determine e -| f.
-  Proof.
-    induction e using Expr_ind; repeat existsHyp.
-    - eexists. constructor. reflexivity.
-    - destruct (max_dec_bis (determine e1) (determine e2)) as [[H1 H2]|[H1 H2]].
-      + destruct (synth_can_check _ _ _ _ H H2). eexists. simpl. rewrite H1.
-        eapply LBinOpS; eassumption || reflexivity.
-      + destruct (synth_can_check _ _ _ _ H0 H2). eexists. simpl. rewrite H1.
-        eapply RBinOpS; eassumption || reflexivity.
-    - eexists. econstructor; eassumption || reflexivity.
-    - destruct (max_dec_bis (determine e1) (determine e2)) as [[H1 H2]|[H1 H2]].
-      + destruct (synth_can_check _ _ _ _ H H2). eexists. simpl.
-        eapply LCompS; eassumption || reflexivity.
-      + destruct (synth_can_check _ _ _ _ H0 H2). eexists. simpl.
-        eapply RCompS; eassumption || reflexivity.
-    - eexists. eapply LogicS; eassumption || reflexivity.
-    - eexists. eapply RedS; eassumption || reflexivity.
-    - eexists. eapply ShiftS; eassumption || reflexivity.
-    - destruct (le_gt_dec (determine e) op).
-      + destruct (synth_can_check _ _ _ _ H l). eexists.
-        eapply LAssignS; eassumption || reflexivity.
-      + eexists. eapply RAssignS; eassumption || reflexivity.
-    - destruct (max_dec_bis (determine e2) (determine e3)) as [[H2 H3]|[H2 H3]].
-      + destruct (synth_can_check _ _ _ _ H H3). eexists. simpl. rewrite H2.
-        eapply LCondS; eassumption || reflexivity.
-      + destruct (synth_can_check _ _ _ _ H0 H3). eexists. simpl. rewrite H2.
-        eapply RCondS; eassumption || reflexivity.
-    - assert (Hfs: exists fs, length fs = length args /\ forall n e t f,
-                   nth_error args n = Some e ->
-                   nth_error (map determine args) n = Some t ->
-                   nth_error fs n = Some f -> e ==> t -| f).
-      + induction args.
-        * eexists []. split. reflexivity. intros []; intros; discriminate H0.
-        * edestruct IHargs. intros. destruct (H (S n) e H0). exists x. assumption.
-          destruct H0. destruct (H 0 a). reflexivity. exists (x0 :: x). split.
-          -- simpl. rewrite H0. reflexivity.
-          -- intros. destruct n. inv H3. inv H4. inv H5. assumption.
-             simpl in *. firstorder.
-      + destruct Hfs as [fs [H1 H2]]. eexists.
-        eapply ConcatS with (ts := map determine args).
-        * symmetry. apply length_map.
-        * symmetry. eassumption.
-        * assumption.
-        * reflexivity.
-        * reflexivity.
-    - eexists. eapply ReplS; eassumption || reflexivity.
-  Qed.
-
   Theorem always_synth : forall e, exists t f, e ==> t -| f.
   Proof.
-    intros. exists (determine e). destruct (synth_determine e) as [f H]. exists f. assumption.
+    induction e using Expr_ind; repeat existsHyp;
+      try (eexists; eexists; econstructor; eassumption || reflexivity).
+    - destruct (max_dec_bis x1 x) as [[H1 H2]|[H1 H2]].
+      + destruct (synth_can_check _ _ _ _ H H2).
+        eexists; eexists; econstructor; eassumption || reflexivity.
+      + destruct (synth_can_check _ _ _ _ H0 H2).
+        eexists; eexists; econstructor; eassumption || reflexivity.
+    - destruct (max_dec_bis x1 x) as [[H1 H2]|[H1 H2]].
+      + destruct (synth_can_check _ _ _ _ H H2).
+        eexists; eexists; econstructor; eassumption || reflexivity.
+      + destruct (synth_can_check _ _ _ _ H0 H2).
+        eexists; eexists; econstructor; eassumption || reflexivity.
+    - destruct (le_gt_dec x op).
+      + destruct (synth_can_check _ _ _ _ H l).
+        eexists; eexists; econstructor; eassumption || reflexivity.
+      + eexists; eexists; econstructor; eassumption || reflexivity.
+    - destruct (max_dec_bis x1 x) as [[H2 H3]|[H2 H3]].
+      + destruct (synth_can_check _ _ _ _ H H3).
+        eexists; eexists; econstructor; eassumption || reflexivity.
+      + destruct (synth_can_check _ _ _ _ H0 H3).
+        eexists; eexists; econstructor; eassumption || reflexivity.
+    - assert (Hfs: exists ts, exists fs, length args = length ts /\
+                                 length args = length fs /\ forall n e t f,
+                   nth_error args n = Some e ->
+                   nth_error ts n = Some t ->
+                   nth_error fs n = Some f -> e ==> t -| f).
+      + induction args.
+        * exists []. exists []. repeat split. intros []; intros; discriminate H0.
+        * destruct IHargs. intros. apply (H (S n) e H0). existsHyp.
+          repeat splitHyp. destruct (H 0 a (Logic.eq_refl _)) as [t [f ?H]] .
+          exists (t :: x). exists (f :: x0). repeat split; simpl; try congruence.
+          intros. destruct n.
+          -- inv H4. inv H5. inv H6. assumption.
+          -- simpl in *. firstorder.
+      + destruct Hfs as [ts [fs [H1 [H2 H3]]]].
+        eexists; eexists; econstructor; eassumption || reflexivity.
   Qed.
 
   Theorem always_check : forall e, exists t f, e <== t -| f.
   Proof.
-    intros. exists (determine e). destruct (synth_determine e) as [f H].
+    intros. destruct (always_synth e) as [t [f H]]. exists t.
     apply (synth_can_check _ _ _ _ H (le_refl _)).
-  Qed.
-
-  Theorem synth_must_be_determine : forall e t f,
-      e ==> t -| f -> t = determine e /\ f [] = Some (determine e).
-  Proof.
-    intros. splitAnd.
-    - destruct (synth_determine e). apply (synth_inj _ _ _ _ _ H H0).
-    - rewrite (synth_root _ _ _ H). subst. reflexivity.
   Qed.
 
   Definition P e s := forall t, s <= t -> exists g, e <== t -| g.
 
   Theorem synth_minimal_check : forall e s, P e s -> (forall u, P e u -> s <= u) -> exists f, e ==> s -| f.
   Proof.
-    unfold P. intros. destruct synth_determine with (e := e) as [x Hx].
-    assert (Heq: s = determine e).
+    unfold P. intros. destruct always_synth with (e := e) as [t [f Hx]].
+    assert (Heq: s = t).
     { apply le_antisymm.
-      - apply H0. intros. apply (synth_can_check _ _ _ _ Hx H1).
-      - destruct (H s). reflexivity. apply (synth_check_order _ _ _ _ _ Hx H1).
-    } subst. exists x. assumption.
+      - apply H0. intros. rewrite <- synth_check; eassumption.
+      - destruct (H s). reflexivity.
+        rewrite synth_check; try eexists; eassumption.
+    } subst. exists f. assumption.
   Qed.
-
-  Lemma synth_check_determine_order : forall e1 e2 t1 t2 f1 f2,
-      e1 ==> t1 -| f1 -> e2 <== t2 -| f2 -> t2 <= t1 -> determine e2 <= determine e1.
-  Proof.
-    intros. destruct (synth_must_be_determine _ _ _ H) as [Ht Hf].
-    subst. destruct (synth_determine e2).
-    apply (synth_check_order _ _ _ _ _ H2) in H0. apply (le_trans _ _ _ H0 H1).
-  Qed.
-
-  Lemma synth_and_order : forall e f t,
-      e <== t -| f -> t <= determine e -> determine e = t.
-  Proof.
-    intros.
-    apply le_antisymm.
-    - destruct (always_synth e) as [t1 [f1 H1]].
-      destruct (synth_must_be_determine _ _ _ H1).
-      subst. apply (synth_check_order _ _ _ _ _ H1 H).
-    - assumption.
-  Qed.
-
 End TypeSystem.

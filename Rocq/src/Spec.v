@@ -1,4 +1,5 @@
 From Stdlib Require Import Lists.List.
+From Stdlib Require Import PeanoNat.
 
 From Verilog Require Import Expr.
 From Verilog Require Import ExprPath.
@@ -13,7 +14,6 @@ Import Path.
 Import Utils.
 
 Module Spec.
-
   Section SpecDef.
     Fixpoint determine e :=
       match e with
