@@ -1,5 +1,6 @@
 From Stdlib Require Import Lists.List.
 From Stdlib Require Import PeanoNat.
+From Stdlib Require Import Logic.FunctionalExtensionality.
 
 From Verilog Require Import Expr.
 From Verilog Require Import ExprPath.
@@ -89,9 +90,6 @@ Module Equiv.
     - assumption.
   Qed.
 
-  Definition agree e f1 (f2: path -> option nat) :=
-    forall p, IsPath e p -> f2 p = Some (f1 p).
-
   Ltac _gen_rel :=
     match goal with
     | [ H: ?e1 ==> ?t -| _, F: ?e2 <== ?t -| _ |- _ ] =>
@@ -118,24 +116,27 @@ Module Equiv.
     end
   .
 
-  Lemma spec_implies_ts: forall e f1,
-      propagate_def e f1 -> exists f2, agree e f1 f2 /\ exists t, e ==> t -| f2.
+  Lemma spec_implies_ts:
+    forall e f1 f2 t, propagate_def e f1 -> e ==> t -| f2 -> f2 = cure_propagate e f1.
   Proof.
-    intros. destruct (always_synth e) as [t [f Hs]]. exists f. split.
-    - subst. unfold agree. intros. prop_split. induction p using path_ind.
-      + repeat prop_gen_eq; try _gen_rel; repeat _ts_gen. congruence.
-      + apply IsPath_chunk in H0. destruct H0 as [e' [Hse Hp]].
-        destruct (synth_sub_expr _ _ _ _ _ Hs Hse) as [t' [f' [[H3|H3] H4]]];
-        rewrite H4; specialize (IHp (sub_expr_valid _ _ _ Hse));
-        specialize (H4 []); rewrite app_nil_r in H4; simpl in H4; rewrite H4 in IHp;
+    intros. apply functional_extensionality. induction x using path_ind;
+      prop_split.
+    - prop_gen_eq. unfold cure_propagate. destruct (IsPath_dec e []).
+      + destruct (synth_must_be_determine _ _ _ H0). congruence.
+      + exfalso. apply n. constructor.
+    - unfold cure_propagate in *. destruct (IsPath_dec e (x0 ++ [x])).
+      + apply IsPath_chunk in i. destruct i as [e' [Hse Hp]].
+        destruct (IsPath_dec e x0); try destruct (n (sub_expr_valid _ _ _ Hse)).
+        destruct (synth_sub_expr _ _ _ _ _ H0 Hse) as [t' [f' [[H3|H3] H4]]];
+          rewrite H4; specialize (H4 []); rewrite app_nil_r in H4; simpl in H4;
           destruct e'; inv Hp; inv_ts; simpl in *; repeat prop_gen_eq;
           repeat splitMax; try _gen_rel; repeat gen_nth; repeat _ts_gen;
           congruence || lia.
-    - exists t. assumption.
+       + destruct (f2 (x0 ++ [x])) eqn:Hf; auto. destruct n.
+         rewrite (synth_f_path _ _ _ H0). firstorder.
   Qed.
 
-  Lemma ts_implies_spec: forall e f1 f2 t,
-      agree e f1 f2 -> e ==> t -| f2 -> propagate_def e f1.
+  Lemma ts_implies_spec: forall e f t, e ==> t -| cure_propagate e f -> propagate_def e f.
   Proof.
     Ltac _ts_spec :=
       match goal with
@@ -159,17 +160,19 @@ Module Equiv.
           try _gen_rel; repeat _ts_gen; congruence || lia
       end
     .
-    unfold agree. autounfold with Spec. repeat split; intros; try _crunch_ts_imp_spec.
-    destruct (synth_must_be_determine _ _ _ H0); specialize (H [] (P_Empty _));
+    intros e f. assert (H: forall p, IsPath e p -> (cure_propagate e f) p = Some (f p)).
+    - intros; unfold cure_propagate; destruct (IsPath_dec e p); firstorder.
+    - autounfold with Spec. repeat split; intros; try _crunch_ts_imp_spec.
+      destruct (synth_must_be_determine _ _ _ H0); specialize (H [] (P_Empty _));
       congruence.
   Qed.
 
-  Theorem ts_equiv_spec : forall e f1,
-      propagate_def e f1 <-> exists f2, agree e f1 f2 /\ exists t, e ==> t -| f2.
+  Theorem ts_equiv_spec : forall e f,
+      propagate_def e f <-> exists t, e ==> t -| cure_propagate e f.
   Proof.
     split; intros.
-    - apply (spec_implies_ts _ _ H).
-    - destruct H as [f2 [H1 [t H2]]]. apply (ts_implies_spec _ _ _ _ H1 H2).
+    - exists (determine e). destruct (synth_determine e).
+      rewrite <- (spec_implies_ts _ _ _ _ H H0). assumption.
+    - destruct H as [t H]. apply (ts_implies_spec _ _ _ H).
   Qed.
-
 End Equiv.

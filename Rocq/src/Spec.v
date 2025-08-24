@@ -1,5 +1,6 @@
 From Stdlib Require Import Lists.List.
 From Stdlib Require Import PeanoNat.
+From Stdlib Require Import Logic.FunctionalExtensionality.
 
 From Verilog Require Import Expr.
 From Verilog Require Import ExprPath.
@@ -143,6 +144,13 @@ Module Spec.
     end
   .
 
+   Definition cure_propagate e (f: path -> nat) p :=
+    match (IsPath_dec e p) with
+    | left _ => Some (f p)
+    | right _ => None
+    end
+  .
+
   Theorem propagate_val : forall e f, propagate_def e f -> forall p, IsPath e p -> exists n, f p = n.
   Proof.
     induction p using path_ind; intros.
@@ -161,6 +169,16 @@ Module Spec.
     - rewrite IsPath_chunk in H1. destruct H1 as [expr [H3 H4]].
       specialize (IHp (sub_expr_valid _ _ _ H3)).
       destruct expr; inv H4; repeat prop_split; repeat prop_gen_eq; congruence.
+  Qed.
+
+  Theorem cured_propagate_unique: forall e f1 f2,
+      propagate_def e f1 -> propagate_def e f2 ->
+      cure_propagate e f1 = cure_propagate e f2.
+  Proof.
+    intros. apply functional_extensionality. intros.
+    repeat unfold cure_propagate. destruct (IsPath_dec e x).
+    - rewrite (propagate_unique _ _ _ H H0 _ i). reflexivity.
+    - reflexivity.
   Qed.
 End Spec.
 
