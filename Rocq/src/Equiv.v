@@ -94,12 +94,6 @@ Module Equiv.
 
   Ltac _gen_rel :=
     match goal with
-    | [ H: _ = max ?n ?m |- _ ] =>
-        let nH := fresh in destruct (max_dec_bis n m) as [[nH ?]|[nH ?]];
-                           rewrite nH in *; clear nH; try _gen_rel
-    | [ |- _ = max ?n ?m ] =>
-        let nH := fresh in destruct (max_dec_bis n m) as [[nH ?]|[nH ?]];
-                           rewrite nH in *; clear nH; try _gen_rel
     | [ H: ?e1 ==> ?t -| _, F: ?e2 <== ?t -| _ |- _ ] =>
         let nH := fresh in assert (nH: determine e2 <= determine e1) by
           apply (synth_check_determine_order _ _ _ _ _ _ H F (le_refl _)); try antisym
@@ -134,8 +128,9 @@ Module Equiv.
         destruct (synth_sub_expr _ _ _ _ _ Hs Hse) as [t' [f' [[H3|H3] H4]]];
         rewrite H4; specialize (IHp (sub_expr_valid _ _ _ Hse));
         specialize (H4 []); rewrite app_nil_r in H4; simpl in H4; rewrite H4 in IHp;
-          destruct e'; inv Hp; inv_ts; simpl in *; repeat prop_gen_eq; try _gen_rel;
-          repeat gen_nth; repeat _ts_gen; congruence || lia.
+          destruct e'; inv Hp; inv_ts; simpl in *; repeat prop_gen_eq;
+          repeat splitMax; try _gen_rel; repeat gen_nth; repeat _ts_gen;
+          congruence || lia.
     - exists t. assumption.
   Qed.
 
@@ -160,8 +155,8 @@ Module Equiv.
       match goal with
       | [ H: _ ==> _ -| _, F: _ @[_] = Some _ |- _ ] =>
           destruct (synth_sub_expr _ _ _ _ _ H F) as [t' [f' [[H3|H3] H4]]];
-          repeat _ts_spec; inv_ts; simpl in *; repeat gen_nth; try _gen_rel;
-          repeat _ts_gen; congruence || lia
+          repeat _ts_spec; inv_ts; simpl in *; repeat gen_nth; repeat splitMax;
+          try _gen_rel; repeat _ts_gen; congruence || lia
       end
     .
     unfold agree. autounfold with Spec. repeat split; intros; try _crunch_ts_imp_spec.

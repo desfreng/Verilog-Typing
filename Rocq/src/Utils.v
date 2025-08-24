@@ -7,15 +7,31 @@ From Stdlib Require Import Classes.RelationClasses.
 Import Nat.
 Import ListNotations.
 
+Module Learn.
+  (* Taken from coq-tricks *)
+  Inductive Learnt {P:Prop} :=
+  | AlreadyLearnt (H:P).
+
+  Local Ltac learn_fact H :=
+    let P := type of H in
+    lazymatch goal with
+    | [ Hlearnt: @Learnt P |- _ ] =>
+      fail 0 "already knew" P "through" Hlearnt
+    | _ => pose proof H; pose proof (AlreadyLearnt H)
+    end.
+
+  Tactic Notation "learn" constr(H) := learn_fact H.
+End Learn.
+
 Module Utils.
+  Import Learn.
 
   Ltac inv H := inversion H; clear H; subst.
 
   Ltac antisym :=
     match goal with
     | [ H: ?x <= ?y, F: ?y <= ?x |- _ ] =>
-        let nH := fresh in assert (nH: x = y) by apply (le_antisymm _ _ H F);
-                           clear H; clear F
+        learn (le_antisymm _ _ H F)
     end
   .
 
@@ -71,46 +87,6 @@ Module Utils.
     end
   .
 
-  Lemma maxList_order : forall x hd tl, hd <= x -> max hd (maxList x tl) = maxList x tl.
-  Proof.
-    intros. generalize dependent x. generalize dependent hd. induction tl.
-    - apply max_r.
-    - intros. simpl. destruct (le_ge_dec a (maxList x tl)).
-      + rewrite -> (max_r _ _ l). apply (IHtl _ _ H).
-      + rewrite -> (max_l _ _ g). apply max_r. clear IHtl. induction tl.
-        * apply (le_trans _ _ _ H g).
-        * apply IHtl. apply (max_lub_r _ _ _ g).
-  Qed.
-
-  Lemma maxList_val : forall x l, maxList x l = x \/ (exists e, In e l /\ maxList x l = e).
-  Proof.
-    induction l.
-    - left. reflexivity.
-    - destruct IHl.
-      + destruct (le_ge_dec a x).
-        * left. simpl. rewrite (maxList_order _ _ _ l0). assumption.
-        * right. exists a. firstorder. simpl. apply max_l. rewrite <- H in g. assumption.
-      + destruct H as [e [H1 H2]]. destruct (le_ge_dec a e).
-        * right. exists e. split. right. assumption. simpl. subst. apply max_r. assumption.
-        * right. exists a. firstorder. simpl. apply max_l. subst. assumption.
-  Qed.
-
-  Lemma maxList_is_max_l : forall x l, x <= maxList x l.
-  Proof.
-    induction l.
-    - constructor.
-    - apply le_trans with (m := maxList x l). assumption. apply le_max_r.
-  Qed.
-
-  Lemma maxList_is_max_r : forall x l e, In e l -> e <= maxList x l.
-  Proof.
-    induction l; intros.
-    - inversion H.
-    - destruct H.
-      + subst. apply le_max_l.
-      + apply le_trans with (m := maxList x l). firstorder. apply le_max_r.
-  Qed.
-
   Fixpoint sum (l: list nat) :=
     match l with
     | [] => 0
@@ -136,39 +112,6 @@ Module Utils.
     end
   .
 
-  Lemma list_sep_None : forall T (l: list T), list_sep l = None <-> l = [].
-  Proof.
-    split; intros.
-    - destruct l; [reflexivity | discriminate H].
-    - subst. reflexivity.
-  Qed.
-
-  Lemma removelast_length : forall T (l: list T), l <> [] -> length (removelast l) < length l.
-  Proof.
-    induction l; intros.
-    - contradiction.
-    - simpl. destruct l eqn:Hl.
-      + lia.
-      + rewrite <- Hl in *. simpl. apply Arith_base.lt_n_S_stt. apply IHl.
-        rewrite Hl. unfold not. intros. discriminate H0.
-  Qed.
-
-  Lemma list_sep_Some : forall T (l: list T) x l',
-      list_sep l = Some (l', x) <-> l = l' ++ [x] /\ length l' < length l.
-  Proof.
-    split; intros.
-    - destruct l eqn:Hl.
-      + discriminate H.
-      + unfold list_sep in H. rewrite <- Hl in *. inversion H. split.
-        * apply app_removelast_last. unfold not. intros. subst. discriminate H0.
-        * apply removelast_length. subst. discriminate.
-    - destruct l eqn:Hl; destruct H.
-      + apply app_cons_not_nil in H. contradiction.
-      + unfold list_sep. rewrite <- Hl in *. assert (HlNil: l <> []). subst. discriminate.
-        apply app_removelast_last with (d := t0) in HlNil. rewrite HlNil in H.
-        rewrite app_inj_tail_iff in H. destruct H. subst. reflexivity.
-  Qed.
-
   Definition le_option_nat (x y : option nat) : Prop :=
     match x, y with
     | None, _ => True
@@ -181,13 +124,27 @@ Module Utils.
     intros [n|]; simpl; auto.
   Qed.
 
-  Lemma max_dec_bis : forall a b, {max a b = a /\ b <= a} + {max a b = b /\ a <= b}.
+  Lemma max_dec_bis: forall a b, (max a b = a /\ b <= a) \/ (max a b = b /\ a <= b).
   Proof.
     intros.
     destruct (max_dec a b).
     - rewrite e. left. split. reflexivity. apply max_l_iff. assumption.
     - rewrite e. right. split. reflexivity. apply max_r_iff. assumption.
   Qed.
+
+  Ltac _useMaxDecBis :=
+    match goal with
+    | [ H: (_ = _ /\ _) \/ (_ = _ /\ _) |- _ ] =>
+        destruct H as [[?Heq ?H]|[?Heq ?H]]; rewrite Heq in *; clear Heq
+    end
+  .
+
+  Ltac splitMax :=
+    match goal with
+    | [ H: context[max ?x ?y] |- _ ] => learn (max_dec_bis x y); _useMaxDecBis
+    | [ |- context[max ?x ?y] ] => learn (max_dec_bis x y); _useMaxDecBis
+    end
+  .
 
   Lemma nth_error_lists : forall A B (l: list A) (l': list B) n x,
       nth_error l n = Some x -> length l = length l' -> exists y, nth_error l' n = Some y.
@@ -198,7 +155,6 @@ Module Utils.
       + eexists. reflexivity.
       + firstorder.
   Qed.
-
 
   Ltac gen_nth :=
     match goal with
@@ -218,19 +174,3 @@ Module Utils.
       left + right; congruence.
   Qed.
 End Utils.
-
-Module Learn.
-  (* Taken from coq-tricks *)
-  Inductive Learnt {P:Prop} :=
-  | AlreadyLearnt (H:P).
-
-  Local Ltac learn_fact H :=
-    let P := type of H in
-    lazymatch goal with
-    | [ Hlearnt: @Learnt P |- _ ] =>
-      fail 0 "already knew" P "through" Hlearnt
-    | _ => pose proof H; pose proof (AlreadyLearnt H)
-    end.
-
-  Tactic Notation "learn" constr(H) := learn_fact H.
-End Learn.
