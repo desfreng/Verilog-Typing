@@ -76,7 +76,7 @@ Module TypeSystem.
       end
   .
 
-  Definition Narry t (f_k: list (path -> option nat)) : path -> option nat :=
+  Definition Nary t (f_k: list (path -> option nat)) : path -> option nat :=
     fun p => match p with
           | [] => Some t
           | i :: p => match nth_error f_k i with
@@ -173,7 +173,7 @@ Module TypeSystem.
                     nth_error fs n = Some fe ->
                     e ==> te -| fe) ->
       t = sum ts ->
-      f = Narry t fs ->
+      f = Nary t fs ->
       EConcat args ==> t -| f
 
   | ReplS : forall i e t f te fe,

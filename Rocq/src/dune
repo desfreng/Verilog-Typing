@@ -12,14 +12,24 @@
   (:v
    (glob_files *.v))
   (:glob
-   (glob_files *.glob)))
+   (glob_files *.glob))
+  (:graph dependencies.dot))
  (action
   (progn
    (run rm -fr html)
    (run mkdir -p html)
-   (run coq2html -base Verilog %{v} %{glob} -d html -short-names -external
-    https://rocq-prover.org/doc/V9.0.0/corelib/ Corelib -external
-    https://rocq-prover.org/doc/V9.0.0/stdlib/ Stdlib))))
+   (run
+    rocqnavi
+    -base
+    Verilog
+    -d
+    html
+    -dependency-graph
+    %{graph}
+    -short-names
+    -show-type-information-using-coqtop-process
+    %{v}
+    %{glob}))))
 
 (alias
  (name doc)

@@ -117,23 +117,28 @@ Module Equiv.
   .
 
   Lemma spec_implies_ts:
-    forall e f1 f2 t, propagate_def e f1 -> e ==> t -| f2 -> f2 = cure_propagate e f1.
+    forall e f, propagate_def e f -> e ==> determine e -| cure_propagate e f.
   Proof.
-    intros. apply functional_extensionality. induction x using path_ind;
-      prop_split.
-    - prop_gen_eq. unfold cure_propagate. destruct (IsPath_dec e []).
-      + destruct (synth_must_be_determine _ _ _ H0). congruence.
-      + exfalso. apply n. constructor.
-    - unfold cure_propagate in *. destruct (IsPath_dec e (x0 ++ [x])).
-      + apply IsPath_chunk in i. destruct i as [e' [Hse Hp]].
-        destruct (IsPath_dec e x0); try destruct (n (sub_expr_valid _ _ _ Hse)).
-        destruct (synth_sub_expr _ _ _ _ _ H0 Hse) as [t' [f' [[H3|H3] H4]]];
-          rewrite H4; specialize (H4 []); rewrite app_nil_r in H4; simpl in H4;
-          destruct e'; inv Hp; inv_ts; simpl in *; repeat prop_gen_eq;
-          repeat splitMax; try _gen_rel; repeat gen_nth; repeat _ts_gen;
-          congruence || lia.
-       + destruct (f2 (x0 ++ [x])) eqn:Hf; auto. destruct n.
-         rewrite (synth_f_path _ _ _ H0). firstorder.
+    intros.
+    assert (forall f1, e ==> determine e -| f1 -> f1 = cure_propagate e f). {
+      intros. apply functional_extensionality.
+      induction x using path_ind; prop_split.
+      - prop_gen_eq. unfold cure_propagate. destruct (IsPath_dec e []).
+        + destruct (synth_must_be_determine _ _ _ H0). congruence.
+        + exfalso. apply n. constructor.
+      - unfold cure_propagate in *. destruct (IsPath_dec e (x0 ++ [x])).
+        + apply IsPath_chunk in i. destruct i as [e' [Hse Hp]].
+          destruct (IsPath_dec e x0);
+            try destruct (n (sub_expr_valid _ _ _ Hse)).
+          destruct (synth_sub_expr _ _ _ _ _ H0 Hse) as [t' [f' [[H3|H3] H4]]];
+            rewrite H4; specialize (H4 []);
+            rewrite app_nil_r in H4; simpl in H4; destruct e'; inv Hp; inv_ts;
+            simpl in *; repeat prop_gen_eq; repeat splitMax; try _gen_rel;
+            repeat gen_nth; repeat _ts_gen; congruence || lia.
+        + destruct (f1 (x0 ++ [x])) eqn:Hf; auto. destruct n.
+          rewrite (synth_f_path _ _ _ H0). firstorder.
+      }
+     destruct (synth_determine e). rewrite <- (H0 _ H1). assumption.
   Qed.
 
   Lemma ts_implies_spec: forall e f t, e ==> t -| cure_propagate e f -> propagate_def e f.
@@ -168,11 +173,10 @@ Module Equiv.
   Qed.
 
   Theorem ts_equiv_spec : forall e f,
-      propagate_def e f <-> exists t, e ==> t -| cure_propagate e f.
+      propagate_def e f <-> e ==> determine e -| cure_propagate e f.
   Proof.
     split; intros.
-    - exists (determine e). destruct (synth_determine e).
-      rewrite <- (spec_implies_ts _ _ _ _ H H0). assumption.
-    - destruct H as [t H]. apply (ts_implies_spec _ _ _ H).
+    - apply (spec_implies_ts _ _ H).
+    - apply (ts_implies_spec _ _ _ H).
   Qed.
 End Equiv.

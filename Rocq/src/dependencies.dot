@@ -1,0 +1,61 @@
+digraph depend {
+    Algo [label="Algo", URL="Verilog.Algo.html"];
+    CachedAlgo [label="CachedAlgo", URL="Verilog.CachedAlgo.html"];
+    Equiv [label="Equiv", URL="Verilog.Equiv.html"];
+    Expr [label="Expr", URL="Verilog.Expr.html"];
+    ExprPath [label="ExprPath", URL="Verilog.ExprPath.html"];
+    Extr [label="Extr", URL="Verilog.Extr.html"];
+    Path [label="Path", URL="Verilog.Path.html"];
+    Spec [label="Spec", URL="Verilog.Spec.html"];
+    TaggedExpr [label="TaggedExpr", URL="Verilog.TaggedExpr.html"];
+    TaggedExprPath [label="TaggedExprPath", URL="Verilog.TaggedExprPath.html"];
+    TypeSystem [label="TypeSystem", URL="Verilog.TypeSystem.html"];
+    Utils [label="Utils", URL="Verilog.Utils.html"];
+
+    Algo -> Expr;
+    Algo -> ExprPath;
+    Algo -> TaggedExpr;
+    Algo -> TaggedExprPath;
+    Algo -> TypeSystem;
+    Algo -> Spec;
+    Algo -> Equiv;
+    Algo -> Utils;
+
+    CachedAlgo -> Expr;
+    CachedAlgo -> ExprPath;
+    CachedAlgo -> TaggedExpr;
+    CachedAlgo -> TaggedExprPath;
+    CachedAlgo -> TypeSystem;
+    CachedAlgo -> Spec;
+    CachedAlgo -> Utils;
+
+    Equiv -> Expr;
+    Equiv ->  ExprPath;
+    Equiv -> Spec;
+    Equiv -> TypeSystem;
+    Equiv -> Utils;
+
+    Expr -> Utils;
+
+    ExprPath -> Expr;
+    ExprPath -> Path;
+    ExprPath -> Utils;
+
+    Extr -> Algo;
+
+    Path -> Utils;
+
+    Spec -> Expr;
+    Spec -> ExprPath;
+    Spec -> Utils;
+
+    TaggedExpr -> Utils;
+
+    TaggedExprPath -> TaggedExpr;
+    TaggedExprPath -> Path;
+    TaggedExprPath -> Utils;
+
+    TypeSystem -> Expr;
+    TypeSystem -> ExprPath;
+    TypeSystem -> Utils;
+}

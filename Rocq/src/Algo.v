@@ -117,7 +117,7 @@ Module Algo.
 
   Definition size_at {T: Type} (e: TaggedExpr T) p := option_map tag (e @@[p]).
 
-  Lemma down_shape1 : forall e p,
+  Lemma propagate_shape1 : forall e p,
       IsPath e p -> forall s, IsTypedPath (propagate e s) p.
   Proof.
     intros. generalize dependent s. induction H; intros; simpl in *;
@@ -125,7 +125,7 @@ Module Algo.
       rewrite nth_error_map. rewrite H. reflexivity.
   Qed.
 
-  Lemma down_shape2 : forall e p s, IsTypedPath (propagate e s) p -> IsPath e p.
+  Lemma propagate_shape2 : forall e p s, IsTypedPath (propagate e s) p -> IsPath e p.
   Proof.
     induction e; intros; try (inv H; constructor; firstorder).
     inv H0. constructor. destruct (nth_error args n) eqn:Hnth;
@@ -133,29 +133,29 @@ Module Algo.
     econstructor. eassumption. apply (H _ _ Hnth _ _ H5).
   Qed.
 
-  Theorem down_shape : forall e p, IsPath e p <-> forall s, IsTypedPath (propagate e s) p.
+  Theorem propagate_shape : forall e p, IsPath e p <-> forall s, IsTypedPath (propagate e s) p.
   Proof.
     split; intros.
-    - apply (down_shape1 _ _ H).
-    - apply (down_shape2 _ _ 0 (H _)).
+    - apply (propagate_shape1 _ _ H).
+    - apply (propagate_shape2 _ _ 0 (H _)).
   Qed.
 
   Theorem type_shape : forall e p, IsPath e p <-> IsTypedPath (type e) p.
   Proof.
     split; intros; unfold type in *.
-    - apply (down_shape1 _ _ H _).
-    - apply (down_shape2 _ _ _ H).
+    - apply (propagate_shape1 _ _ H _).
+    - apply (propagate_shape2 _ _ _ H).
   Qed.
 
-  Lemma up_top_size : forall e, determine e = Spec.determine e.
+  Lemma determine_top_size : forall e, determine e = Spec.determine e.
   Proof. induction e using Expr_ind; reflexivity. Qed.
 
-  Lemma down_top_size : forall e s, tag (propagate e s) = s.
+  Lemma propagate_top_size : forall e s, tag (propagate e s) = s.
   Proof. intros; destruct e; reflexivity. Qed.
 
   Lemma type_top_size : forall e, tag (type e) = determine e.
   Proof.
-    intros. unfold type. rewrite up_top_size. apply down_top_size.
+    intros. unfold type. rewrite determine_top_size. apply propagate_top_size.
   Qed.
 
   Ltac inv_path :=
@@ -164,17 +164,17 @@ Module Algo.
     end
   .
 
-  Lemma down_size_path_lemma :
+  Lemma propagate_size_path_lemma :
     forall e s fc, e <== s -| fc -> forall p, IsPath e p -> fc p = size_at (propagate e s) p.
   Proof.
-    Ltac _down_size_dec :=
+    Ltac _propagate_size_dec :=
       match goal with
       | [ |- _ = option_map _ ((propagate _ (max ?n ?m)) @@[_]) ] =>
           let nH := fresh in destruct (max_dec_bis n m) as [[nH ?]|[nH ?]];
                              rewrite nH in *; clear nH
       end
     .
-    Ltac _down_size_p_lem :=
+    Ltac _propagate_size_p_lem :=
       match goal with
       | [ H: _ = _ |- _ ] => rewrite <- H
       | [ H: _ -> _ |- _ ] => eapply H; eassumption
@@ -191,19 +191,19 @@ Module Algo.
           try antisym; subst
       | [ H: ?e <== ?t -| _, F: ?t <= Spec.determine ?e |- _ ] =>
           learn (Equiv.synth_and_order _ _ _ H F); subst
-      | [ H : context [Spec.determine _] |- _ ] => rewrite up_top_size in H
+      | [ H : context [Spec.determine _] |- _ ] => rewrite determine_top_size in H
       end
     .
     induction e using Expr_ind; intros; simpl in *; unfold size_at; inv_path;
       try (apply check_root in H; simpl; congruence);
-      inv_ts; simpl; repeat (rewrite up_top_size); try _down_size_dec;
-      repeat _down_size_p_lem; try lia; try reflexivity.
+      inv_ts; simpl; repeat (rewrite determine_top_size); try _propagate_size_dec;
+      repeat _propagate_size_p_lem; try lia; try reflexivity.
     repeat (gen_nth). repeat (rewrite nth_error_map). rewrite H3. rewrite H0. simpl.
     repeat (rewrite up_top_size). specialize (H8 _ _ _ _ H3 H1 H0).
-    repeat _down_size_p_lem.
+    repeat _propagate_size_p_lem.
   Qed.
 
-  Theorem down_size_path : forall e s,
+  Theorem propagate_size_path : forall e s,
       determine e <= s -> e <== s -| size_at (propagate e s).
   Proof.
     intros. destruct (always_synth e) as [t [f Hs]].
@@ -211,16 +211,16 @@ Module Algo.
     destruct (synth_can_check _ _ _ _ Hs H) as [fc Hc]. clear Hs. clear f.
     assert (Hfc: fc = size_at (propagate e s)).
     {
-      extensionality p.
-      destruct (fc p) eqn:Hfc.
-      - assert (Hp: IsPath e p) by (rewrite (check_f_path _ _ _ Hc); exists n; assumption).
-        rewrite <- Hfc. apply down_size_path_lemma; assumption.
-      - assert (Hp: ~(IsTypedPath (propagate e s) p)).
-        { unfold not. intros. apply down_shape2 in H0.
-          rewrite (check_f_path _ _ _ Hc) in H0. destruct H0. congruence. }
-        unfold size_at. destruct (propagate e s @@[ p]) eqn:HsTe.
-        + exfalso. apply Hp. apply (sub_typed_expr_valid _ _ _ _ HsTe).
-        + reflexivity.
+      extensionality p. destruct (IsPath_dec e p).
+      - apply propagate_size_path_lemma; assumption.
+      - assert (fc p = None).
+        { destruct (fc p) eqn:Hfc; try reflexivity. exfalso. apply n.
+          rewrite (check_f_path _ _ _ Hc). firstorder. }
+        assert (propagate e s @@[ p] = None).
+        { destruct (propagate e s @@[ p]) eqn:Hpr; try reflexivity. exfalso.
+          apply n. eapply propagate_shape2.
+          apply (sub_typed_expr_valid _ _ _ _ Hpr). }
+        unfold size_at. rewrite H1. assumption.
     }
     rewrite <- Hfc. assumption.
   Qed.
@@ -230,7 +230,7 @@ Module Algo.
     intros. exists (determine e). destruct (always_synth e) as [t [f Hs]].
     destruct (synth_must_be_determine _ _ _ Hs); subst.
     assert (Hc: e <== determine e -| size_at (type e)).
-    { unfold type. rewrite up_top_size. apply down_size_path. reflexivity. }
+    { unfold type. rewrite determine_top_size. apply propagate_size_path. reflexivity. }
     assert (Hf: f = size_at (type e))
       by (extensionality p; apply (synth_check_inj_f _ _ _ _ Hs Hc)).
     subst. assumption.

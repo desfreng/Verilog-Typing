@@ -10,4 +10,4 @@
  (name VerilogTyping)
  (depends
   coq
-  (coq2html :with-doc)))
+  (rocq-navi :with-doc)))
