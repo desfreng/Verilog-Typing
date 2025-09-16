@@ -44,7 +44,7 @@ correctness proofs.
 
 ### Standardization Contributions
 
-- **IEEE 1800 Improvement Proposal**: Available at
+- **IEEE 1800 Improvement Proposal** (`proposal/proposal.pdf`): Available at
 [https://gabriel.desfrene.fr/verilog/proposal.pdf](https://gabriel.desfrene.fr/verilog/proposal.pdf)
 - Addresses ambiguities in the current standard while maintaining backward compatibility
 
