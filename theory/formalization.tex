@@ -1,0 +1,114 @@
+\documentclass{article}
+\usepackage[a4paper, margin=1cm]{geometry}
+\usepackage[english]{babel}
+\usepackage[mono=false]{libertine}
+
+\usepackage{hyperref}
+\usepackage{csquotes}
+\usepackage{ascii}
+\usepackage{enumitem}
+
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{mathtools}
+
+\allowdisplaybreaks{}
+
+\newcommand{\mytilde}{\raisebox{-.7ex}{\asciitilde{}}}
+
+\renewcommand{\epsilon}{\varepsilon}
+
+\newcommand{\binOp}{\ensuremath{\left\{
+\texttt{+}, \texttt{-}, \texttt{*}, \texttt{/}, \texttt{\%}, \texttt{\&},
+\texttt{|}, \texttt{\^{}}, \texttt{\^{}}\mytilde, \mytilde\texttt{\^{}}
+\right\}}}
+\newcommand{\unOp}{\ensuremath{\left\{
+    \texttt{+}, \texttt{-}, \texttt{++}, \texttt{--}, \mytilde
+    \right\}}}
+\newcommand{\comp}{\ensuremath{\left\{
+    \texttt{===}, \texttt{!==}, \texttt{==?}, \texttt{!=?}, \texttt{==},
+    \texttt{!=}, \texttt{>}, \texttt{>=}, \texttt{<}, \texttt{<=}
+    \right\}}}
+\newcommand{\logic}{\ensuremath{\left\{\texttt{\&\&}, \texttt{||}, \texttt{->},
+    \texttt{<->}\right\}}}
+\newcommand{\red}{\ensuremath{\left\{
+\texttt{\&}, \mytilde\texttt{\&}, \texttt{|}, \mytilde\texttt{|},
+\texttt{\^{}}, \mytilde\texttt{\^{}}, \texttt{\^{}}\mytilde, \texttt{!}
+\right\}}}
+\newcommand{\shift}{\ensuremath{\left\{
+    \texttt{>>}, \texttt{<}\texttt{<}, \texttt{**}, \texttt{>>>},
+    \texttt{<}\texttt{<}\texttt{<}
+    \right\}}}
+
+\title{Formalization of the IEEE 1800}
+\date{}
+\author{}
+
+\begin{document}
+\maketitle
+
+\subsection*{Determine phase}
+
+\begin{align*}
+  \mathsf{determine}(o)
+   & = \Gamma(o) \quad \text{(where $o \in \mathcal{O}$)}     \\
+  \mathsf{determine}(\texttt{BinaryOp}(e_1, e_2))
+   & = \max(\mathsf{determine}(e_1), \mathsf{determine}(e_2)) \\
+  \mathsf{determine}(\texttt{UnaryOp}(e))
+   & = \mathsf{determine}(e)                                  \\
+  \mathsf{determine}(\texttt{ComparisonOp}(e_1, e_2))
+   & = 1                                                      \\
+  \mathsf{determine}(\texttt{LogicOp}(e_1, e_2))
+   & = 1                                                      \\
+  \mathsf{determine}(\texttt{ReductionOp}(e))
+   & = 1                                                      \\
+  \mathsf{determine}(\texttt{ShiftOp}(e_1, e_2))
+   & = \mathsf{determine}(e_1)                                \\
+  \mathsf{determine}(\texttt{AssignmentOp}(l, e))
+   & = \phi(l)                                                \\
+  \mathsf{determine}(\texttt{ConditionalOp}(e_1, e_2, e_3)
+   & = \max(\mathsf{determine}(e_2), \mathsf{determine}(e_3)) \\
+  \mathsf{determine}(\texttt{Replication}(n, e))
+   & = n \times \mathsf{determine}(e)                         \\
+  \mathsf{determine}(\texttt{Concatenation}(e_1, \ldots, e_k))
+   & = \sum_{i=1}^{k} \mathsf{determine}(e_i)
+\end{align*}
+
+
+\subsection*{Propagate phase}
+
+\begin{align*}
+  \mathsf{propagate}_e([])        & = \mathsf{determine}(e)
+  \intertext{\hspace{4em}For $e|_p = \texttt{ReductionOp}(e')$:}
+  \mathsf{propagate}_e(p \cdot 0) & = \mathsf{determine}(e')
+  \intertext{\hspace{4em}For $e|_p = \texttt{LogicOp}(e_1, e_2)$:}
+  \mathsf{propagate}_e(p \cdot 0) & = \mathsf{determine}(e_1) \\
+  \mathsf{propagate}_e(p \cdot 1) & = \mathsf{determine}(e_2)
+  \intertext{\hspace{4em}For $e|_p = \texttt{Concatenation}(e_0, \ldots, e_k)$, with $i \in \{0, \ldots, k\}$:}
+  \mathsf{propagate}_e(p \cdot i) & = \mathsf{determine}(e_i)
+  \intertext{\hspace{4em}For $e|_p = \texttt{Replication}(n, e')$:}
+  \mathsf{propagate}_e(p \cdot 0) & = \mathsf{determine}(e')
+  \intertext{\hspace{4em}For $e|_p = \texttt{ComparisonOp}(e_1, e_2)$:}
+  \mathsf{propagate}_e(p \cdot 0) & =
+  \max(\mathsf{determine}(e_1), \mathsf{determine}(e_2))      \\
+  \mathsf{propagate}_e(p \cdot 1) & =
+  \max(\mathsf{determine}(e_1), \mathsf{determine}(e_2))
+  \intertext{\hspace{4em}For $e|_p = \texttt{BinaryOp}(e_1, e_2)$:}
+  \mathsf{propagate}_e(p \cdot 0) & = \mathsf{propagate}_e(p) \\
+  \mathsf{propagate}_e(p \cdot 1) & = \mathsf{propagate}_e(p)
+  \intertext{\hspace{4em}For $e|_p = \texttt{UnaryOp}(e')$:}
+  \mathsf{propagate}_e(p \cdot 0) & = \mathsf{propagate}_e(p)
+  \intertext{\hspace{4em}For $e|_p = \texttt{ShiftOp}(e_1, e_2)$:}
+  \mathsf{propagate}_e(p \cdot 0) & = \mathsf{propagate}_e(p) \\
+  \mathsf{propagate}_e(p \cdot 1) & = \mathsf{determine}(e_2)
+  \intertext{\hspace{4em}For $e|_p = \texttt{ConditionalOp}(e_1, e_2, e_3)$:}
+  \mathsf{propagate}_e(p \cdot 0) & = \mathsf{determine}(e_1) \\
+  \mathsf{propagate}_e(p \cdot 1) & = \mathsf{propagate}_e(p) \\
+  \mathsf{propagate}_e(p \cdot 2) & = \mathsf{propagate}_e(p)
+  \intertext{\hspace{4em}For $e|_p = \texttt{AssignmentOp}(l, e')$:}
+  \mathsf{propagate}_e(p \cdot 0) & =
+  \max(\mathsf{determine}(e'), \phi(l))
+\end{align*}
+
+\end{document}

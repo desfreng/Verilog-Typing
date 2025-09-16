@@ -1,0 +1,282 @@
+\documentclass{article}
+\usepackage[a4paper, margin=1cm]{geometry}
+\usepackage[english]{babel}
+\usepackage[mono=false]{libertine}
+
+\usepackage{hyperref}
+\usepackage{csquotes}
+\usepackage{ascii}
+\usepackage{enumitem}
+
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{mathtools}
+
+\usepackage{ebproof}
+
+\allowdisplaybreaks{}
+
+\DeclareMathOperator{\Path}{Path}
+
+\DeclareMathOperator{\Binary}{Binary}
+\DeclareMathOperator{\Unary}{Unary}
+\DeclareMathOperator{\Ternary}{Ternary}
+\DeclareMathOperator{\Nary}{Nary}
+
+\newcommand{\sds}{\emph{self-determined size}}
+\newcommand{\mbr}{\emph{may be resized}}
+\newcommand{\fsz}{\emph{final size}}
+\newcommand{\ctxDet}{\emph{context-determined}}
+\newcommand{\slfDet}{\emph{self-determined}}
+
+\newcommand{\Syn}{\ensuremath{\Rightarrow}}
+\newcommand{\Chk}{\ensuremath{\Leftarrow}}
+
+\newcommand{\s}[3]{\ensuremath{#1 \Syn{} #2 \dashv{} #3}}
+\renewcommand{\c}[3]{\ensuremath{#1 \Chk{} #2 \dashv{} #3}}
+
+\title{New Theory for Verilog Size Checking}
+\date{}
+\author{}
+
+\begin{document}
+\maketitle
+
+\section*{Path}
+A path is represented as a list of natural numbers that encodes
+navigation through the abstract syntax tree: starting from the root, each number
+indicates which child to visit next (with $0$ denoting the first child, $1$
+the second, and so forth). For example, the path $[1, 0]$ refers to the first
+child of the second child of the root expression.
+The empty path $[]$ refers to the root expression itself.
+
+\section*{Expressions}
+
+\begin{itemize}
+  \item $\mathcal{A}$ is the set of atoms in an expression. In the AST, they
+    correspond to leaves. In System-Verilog, they refer to what the standard
+    calls an ``operand'' (variables, integers, function calls, slices of a
+    variable, etc.).
+  \item $\mathcal{R}$ is the set of resizable expressions. It corresponds to the
+    expression whose top level is one of: atom, comparisons, logic
+    operation, reduction, assignments, shift assignments, concatenation,
+    replication and inside operation.
+  \item $\mathcal{E}$ is the set of System-Verilog expressions. We have
+    $\mathcal{A} \subset \mathcal{E}$. An expression either contains an
+    expression or is an atom.
+\end{itemize}
+
+\section*{Rules}
+We use the following notations:
+\begin{itemize}
+  \item $\Gamma$ maps atoms to their size,
+  \item $\Phi$ maps lvalues to their size,
+  \item The statement $\s{e}{t}{f}$ means ``$e$ has size $t$, with $f$ mapping
+    each sub-expressions of $e$ to their size'',
+  \item The statement $\c{e}{t}{f}$ means ``$e$ can be resized to $t$, with $f$
+    mapping each sub-expressions of $e$ to their size''.
+\end{itemize}
+
+
+\subsection*{Function combinator}
+\begin{equation*}
+  \renewcommand\arraystretch{1.1}
+  \begin{array}{ccc}
+    \Unary(f, t) \Coloneq \left\{
+    \begin{array}{lcl}
+      {[]}          & \mapsto & t     \\
+      0 \dblcolon p & \mapsto & f (p)
+    \end{array}
+    \right.
+     & \hspace{.5em} &
+    \Binary(t, f, g) \Coloneq \left\{
+    \begin{array}{lcl}
+      {[]}          & \mapsto & t     \\
+      0 \dblcolon p & \mapsto & f (p) \\
+      1 \dblcolon p & \mapsto & g (p)
+    \end{array}
+    \right.
+    \\[1em]
+    \Ternary(t, f, g, h) \Coloneq \left\{
+    \begin{array}{lcl}
+      {[]}          & \mapsto & t     \\
+      0 \dblcolon p & \mapsto & f (p) \\
+      1 \dblcolon p & \mapsto & g (p) \\
+      2 \dblcolon p & \mapsto & h (p)
+    \end{array}
+    \right.
+     & \hspace{.5em} &
+    \Nary(t, f_1, \dots, f_k) \Coloneq \left\{
+    \begin{array}{lcl}
+      {[]}          & \mapsto & t       \\
+      i \dblcolon p & \mapsto & f_i (p)
+    \end{array}
+    \right.
+  \end{array}
+\end{equation*}
+
+\subsection*{Resizing}
+
+\begin{equation*}
+  \begin{prooftree}
+    \hypo{\s{e}{s}{f}}
+    \hypo{s \leqslant t}
+    \hypo{e \in \mathcal{R}}
+    \infer3[\textsf{Resize\Chk}]{\c{e}{t}{f\big[{[]}\mapsto t\big]}}
+  \end{prooftree}
+\end{equation*}
+
+H
+\begin{align*}
+   &
+  \begin{prooftree}
+    \hypo{\c{a}{t}{f_a}}
+    \hypo{\c{b}{t}{f_b}}
+    \infer2[\textsf{BinOp\Chk}]{\c{a\oplus b}{t}{\Binary(t, f_a, f_b)}}
+  \end{prooftree}
+   &
+   &
+  \begin{prooftree}
+    \hypo{\c{a}{t}{f_a}}
+    \hypo{\s{b}{t_b}{f_b}}
+    \infer2[\textsf{Shift\Chk}]{\c{a \oplus b}{t}{\Binary(t, f_a, f_b)}}
+  \end{prooftree}
+\end{align*}
+\begin{align*}
+   &
+  \begin{prooftree}
+    \hypo{\c{e}{t}{f}}
+    \infer1[\textsf{UnOp\Chk}]{\c{\oplus e}{t}{\Unary(t, f)}}
+  \end{prooftree}
+   &
+   &
+  \begin{prooftree}
+    \hypo{\s{e}{t_e}{f_e}}
+    \hypo{\c{a}{t}{f_a}}
+    \hypo{\c{b}{t}{f_b}}
+    \infer3[\textsf{Cond\Chk}]{\c{e \texttt{?} a \texttt{:} b}{t}%
+      {\Ternary(t, f_e, f_a, f_b)}}
+  \end{prooftree}
+\end{align*}
+
+\newpage
+\subsection*{Synthesize}
+
+\begin{equation*}
+  \begin{prooftree}
+    \hypo{\Gamma(e) = s}
+    \hypo{e \in \mathcal{O}}
+    \infer2[\textsf{Operand\Syn}]{\s{e}{s}{\{[]\mapsto s\}}}
+  \end{prooftree}
+\end{equation*}
+\begin{align*}
+   &
+  \begin{prooftree}
+    \hypo{\s{e}{t}{f}}
+    \infer1[\textsf{UnOp\Syn}]{\s{\oplus e}{t}{\Unary(t, f)}}
+  \end{prooftree}
+   &
+   &
+  \begin{prooftree}
+    \hypo{\s{e}{t}{f}}
+    \infer1[\textsf{Red\Syn}]{\s{\oplus e}{1}{\Unary(1, f)}}
+  \end{prooftree}
+\end{align*}
+\begin{align*}
+   &
+  \begin{prooftree}
+    \hypo{\s{a}{t}{f_a}}
+    \hypo{\s{b}{t_b}{f_b}}
+    \infer2[\textsf{Shift\Syn}]{\s{a \oplus b}{t}{\Binary(t, f_a, f_b)}}
+  \end{prooftree}
+   &
+   &
+  \begin{prooftree}
+    \hypo{\s{a}{t_a}{f_a}}
+    \hypo{\s{b}{t_b}{f_b}}
+    \infer2[\textsf{Logic\Syn}]{\s{a \oplus b}{1}{\Binary(1, f_a, f_b)}}
+  \end{prooftree}
+\end{align*}
+\begin{align*}
+   &
+  \begin{prooftree}
+    \hypo{\s{a}{t}{f_a}}
+    \hypo{\c{b}{t}{f_b}}
+    \infer2[\textsf{LBinOp\Syn}]{\s{a\oplus b}{t}{\Binary(t, f_a, f_b)}}
+  \end{prooftree}
+   &
+   &
+  \begin{prooftree}
+    \hypo{\c{a}{t}{f_a}}
+    \hypo{\s{b}{t}{f_b}}
+    \infer2[\textsf{RBinOp\Syn}]{\s{a\oplus b}{t}{\Binary(t, f_a, f_b)}}
+  \end{prooftree}
+\end{align*}
+\begin{align*}
+   &
+  \begin{prooftree}
+    \hypo{\s{a}{t}{f_a}}
+    \hypo{\c{b}{t}{f_b}}
+    \infer2[\textsf{LCmp\Syn}]{\s{a \oplus b}{1}{\Binary(1, f_a, f_b)}}
+  \end{prooftree}
+   &
+   &
+  \begin{prooftree}
+    \hypo{\c{a}{t}{f_a}}
+    \hypo{\s{b}{t}{f_b}}
+    \infer2[\textsf{RCmp\Syn}]{\s{a \oplus b}{1}{\Binary(1, f_a, f_b)}}
+  \end{prooftree}
+\end{align*}
+\begin{align*}
+   &
+  \begin{prooftree}
+    \hypo{\phi(l) = t}
+    \hypo{\c{e}{t}{f}}
+    \infer2[\textsf{LAssign\Syn}]{\s{(l~\texttt{=}~e)}{t}{\Unary(t, f)}}
+  \end{prooftree}
+   &
+   &
+  \begin{prooftree}
+    \hypo{\phi(l) = t}
+    \hypo{\s{e}{t_e}{f}}
+    \hypo{t < t_e}
+    \infer3[\textsf{RAssign\Syn}]{\s{(l~\texttt{=}~e)}{t}{\Unary(t, f)}}
+  \end{prooftree}
+\end{align*}
+\begin{gather*}
+  \begin{prooftree}
+    \hypo{\s{e}{t_e}{f_e}}
+    \hypo{\s{a}{t}{f_a}}
+    \hypo{\c{b}{t}{f_b}}
+    \infer3[\textsf{LCond\Syn}]{\s{e \texttt{?} a \texttt{:} b}{t}%
+      {\Ternary(t, f_e, f_a, f_b)}}
+  \end{prooftree}
+  \\[1em]
+  \begin{prooftree}
+    \hypo{\s{e}{t_e}{f_e}}
+    \hypo{\c{a}{t}{f_a}}
+    \hypo{\s{b}{t}{f_b}}
+    \infer3[\textsf{RCond\Syn}]{\s{e \texttt{?} a \texttt{:} b}{t}%
+      {\Ternary(t, f_e, f_a, f_b)}}
+  \end{prooftree}
+  \\[1em]
+  \begin{prooftree}
+    \hypo{i \in \mathbb{N}}
+    \hypo{\s{e}{t_e}{f}}
+    \hypo{t = i \times t_e}
+    \infer3[\textsf{Repl\Syn}]{\s{\texttt{\{}i~e\texttt{\}}}{t}{\Unary(t, f)}}
+  \end{prooftree}
+  \\[1em]
+  \begin{prooftree}
+    \hypo{\s{e_1}{t_1}{f_i}}
+    \hypo{\dots}
+    \hypo{\s{e_k}{t_k}{f_k}}
+    \hypo{t = t_1 + \cdots + t_k}
+    \infer4[\textsf{Concat\Syn}]
+    {\s{\texttt{\{}e_1, \texttt{\dots}, e_k \texttt{\}}}{t}
+      {\Nary(t, f_1, \dots, f_k)}}
+  \end{prooftree}
+\end{gather*}
+
+\end{document}

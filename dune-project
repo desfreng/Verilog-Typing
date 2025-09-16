@@ -8,6 +8,4 @@
 
 (package
  (name VerilogTyping)
- (depends
-  coq
-  (rocq-navi :with-doc)))
+ (depends rocq-prover rocq-navi))
