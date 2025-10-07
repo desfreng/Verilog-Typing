@@ -58,7 +58,7 @@ make tex
 
 ## Authors
 
-* Gabriel Desfrene (École normale supérieure — PSL)
+* Gabriel Desfrene (École normale supérieure -- PSL)
 * Quentin Corradi (Imperial College London)
 * Michalis Pardalos (Imperial College London)
 * John Wickerson (Imperial College London)
