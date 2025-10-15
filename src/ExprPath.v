@@ -10,7 +10,20 @@ Import Expr.
 Import Path.
 Import Utils.
 
+(** * ExprPath Module *)
+(** This module formalizes the notion of *paths* within SystemVerilog expressions.
+    A path encodes the position of a subexpression inside a larger expression tree.
+    The module defines:
+    - a predicate [IsPath] relating expressions to valid paths,
+    - a function [sub_expr] for extracting subexpressions by path,
+    - and several lemmas connecting these concepts. *)
 Module ExprPath.
+
+  (** [IsPath e p] expresses that [p] is a valid path within the expression [e].
+      Each constructor identifies the subexpression reached by following an index sequence:
+      - [0], [1], or [2] select specific subfields of binary, unary, or ternary operators;
+      - for concatenations, the path uses list indices via [nth_error];
+      - the empty path [[]] always denotes the expression itself. *)
   Inductive IsPath : Expr -> path -> Prop :=
   | P_Empty : forall e,
       IsPath e []
@@ -48,6 +61,9 @@ Module ExprPath.
       IsPath arg p -> IsPath (ERepl i arg) (0 :: p)
   .
 
+  (** [sub_expr e p] navigates the expression [e] according to path [p]
+      and returns the corresponding subexpression (if it exists).
+      The function returns [None] when [p] does not correspond to any valid substructure. *)
   Fixpoint sub_expr (e: Expr) (p: path) :=
     match e, p with
     | e, [] => Some e
@@ -75,8 +91,11 @@ Module ExprPath.
     end
   .
 
+  (** The shorthand [e @[ p ]] denotes [sub_expr e p]. *)
   Notation "e @[ p ]" := (sub_expr e p) (at level 20).
 
+  (** [IsPath_is_sub_expr]: if [p] is a valid path within [e], then following [p]
+      via [sub_expr] yields some subexpression. *)
   Lemma IsPath_is_sub_expr: forall e p, IsPath e p -> exists e0, e @[p] = Some e0.
   Proof.
     intros. induction H; try (destruct IHIsPath as [x H1]; exists x; assumption).
@@ -84,6 +103,8 @@ Module ExprPath.
     - destruct IHIsPath as [x H1]; exists x. simpl. rewrite H. assumption.
   Qed.
 
+  (** [sub_expr_valid]: if [sub_expr e p = Some f], then [p] is a valid path of [e]
+      leading to [f]. *)
   Lemma sub_expr_valid: forall e p f, e @[p] = Some f -> IsPath e p.
   Proof.
     induction e using Expr_ind; intros;
@@ -96,6 +117,8 @@ Module ExprPath.
         * congruence.
   Qed.
 
+  (** [IsPath_sub_expr_iff]: a path is valid for an expression if and only if
+      the corresponding subexpression lookup succeeds. *)
   Lemma IsPath_sub_expr_iff: forall e p, IsPath e p <-> exists e0, e @[p] = Some e0.
   Proof.
     split.
@@ -103,11 +126,15 @@ Module ExprPath.
     - intros [? H]. apply (sub_expr_valid _ _ _ H).
   Qed.
 
+  (** [sub_expr_nil]: the empty path always corresponds to the expression itself. *)
   Lemma sub_expr_nil: forall e, e @[[]] = Some e.
   Proof.
     intros. destruct e; reflexivity.
   Qed.
 
+  (** [sub_expr_chunk]: subexpression lookups compose under path concatenation.
+      Following [p ++ q] is equivalent to first locating the subexpression at [p],
+      then following [q] within it. *)
   Lemma sub_expr_chunk : forall p q e g,
       (exists f, e @[p] = Some f /\ f @[q] = Some g) <-> e @[p ++ q] = Some g.
   Proof.
@@ -122,6 +149,8 @@ Module ExprPath.
         destruct a as [|[|[]]]; congruence || apply IHp; assumption.
   Qed.
 
+  (** [IsPath_chunk]: decomposes the validity of a concatenated path [p ++ c]
+      into a prefix-subexpression relation and a continuation path within that subexpression. *)
   Lemma IsPath_chunk : forall e p c,
       IsPath e (p ++ c) <-> (exists f, e @[p] = Some f /\ IsPath f c).
   Proof.
@@ -134,6 +163,8 @@ Module ExprPath.
       apply sub_expr_chunk. exists f. intuition.
   Qed.
 
+  (** [IsPath_dec]: the predicate [IsPath e p] is decidable — every path is either
+      a valid traversal of [e] or not. *)
   Theorem IsPath_dec : forall e p, {IsPath e p} + {~(IsPath e p)}.
   Proof.
     intros. destruct (e @[p]) eqn:Hep.

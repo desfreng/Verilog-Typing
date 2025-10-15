@@ -4,22 +4,37 @@ From Verilog Require Import Utils.
 Import ListNotations.
 Import Utils.
 
+(** This module defines the untyped abstract syntax tree (AST) of SystemVerilog expressions. *)
 Module Expr.
 
   Unset Elimination Schemes.
 
+  (** ** SystemVerilog Expression Model *)
+  (** This inductive type represents the structure of SystemVerilog expressions
+      before typing. *)
   Inductive Expr : Type :=
-  | EAtom (size: nat)
+  | EOperand (size: nat)
+      (** Atomic operand, storing its bitwidth [size] (as determined by the Gamma function). *)
   | EBinOp (lhs rhs: Expr)
+      (** Binary operator expression. *)
   | EUnOp (arg: Expr)
+      (** Unary operator expression. *)
   | EComp (lhs rhs: Expr)
+      (** Comparison expression (e.g., equality, inequality, relational ops). *)
   | ELogic (lhs rhs: Expr)
+      (** Logical expression (e.g., logical AND, OR). *)
   | EReduction (arg: Expr)
+      (** Reduction expression (e.g., bitwise reduction operators). *)
   | EShift (lhs rhs: Expr)
+      (** Bitwise shift operation (e.g., left/right shift). *)
   | EAssign (lval: nat) (arg: Expr)
+      (** Assignment expression, storing the size of the left-hand value [lval]. *)
   | ECond (cond tb fb: Expr)
+      (** Conditional (ternary) expression: [cond ? tb : fb]. *)
   | EConcat (args: list Expr)
+      (** Concatenation of multiple subexpressions. *)
   | ERepl (amount: nat) (arg: Expr)
+      (** Replication operator: repeats [arg] [amount] times. *)
   .
 
   Set Elimination Schemes.
@@ -36,11 +51,16 @@ Module Expr.
     - apply (X0 _ _ H1).
   Qed.
 
+  (** ** Custom Induction Principle for [Expr] *)
+  
+  (** Since the built-in elimination scheme is not sufficient for lists of
+      expressions (e.g., [EConcat]), we define a custom induction principle that
+      handles list substructures recursively. *)
   Section Expr_rect.
     Variable P : Expr -> Type.
 
     Hypothesis HPAtom:
-      forall o, P (EAtom o).
+      forall o, P (EOperand o).
 
     Hypothesis HPBinOp:
       forall lhs rhs, P lhs -> P rhs -> P (EBinOp lhs rhs).
@@ -72,9 +92,11 @@ Module Expr.
     Hypothesis HPRepl:
       forall n arg, P arg -> P (ERepl n arg).
 
+    (** Recursive definition of [Expr_rect], extending the induction principle
+        to handle list structures (notably in [EConcat]). *)
     Fixpoint Expr_rect e : P e :=
       match e with
-      | EAtom o => HPAtom o
+      | EOperand o => HPAtom o
       | EBinOp lhs rhs => HPBinOp _ _ (Expr_rect lhs) (Expr_rect rhs)
       | EUnOp arg => HPUnOp _ (Expr_rect arg)
       | EComp lhs rhs => HPComp _ _ (Expr_rect lhs) (Expr_rect rhs)
@@ -93,9 +115,12 @@ Module Expr.
     .
   End Expr_rect.
 
+  (** Convenient versions of [Expr_rect] for properties and sets. *)
   Definition Expr_ind (P: Expr -> Prop) := Expr_rect P.
   Definition Expr_rec (P: Expr -> Set) := Expr_rect P.
 
+  (** ** Decidability of Expression Equality *)
+  (** Equality between two [Expr] terms is decidable by structural comparison. *)
   Theorem Expr_eq_dec : forall (e f: Expr), {e = f} + {e <> f}.
   Proof.
     intros. decide equality.

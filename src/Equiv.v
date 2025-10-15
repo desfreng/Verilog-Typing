@@ -19,7 +19,13 @@ Import Spec.
 Import TypeSystem.
 Import Utils.
 
+(** * Equiv: Equivalence between specification-based and type-system-based synthesis *)
+
+(** This module establishes the correspondence between the specification
+    and our proposed type-system. *)
 Module Equiv.
+  (** ** Main results *)
+  (** [synth_determine]: Every expression synthesize its self-determined size. *)
   Theorem synth_determine : forall e, exists f, e ==> determine e -| f.
   Proof.
     induction e using Expr_ind; repeat existsHyp;
@@ -63,15 +69,19 @@ Module Equiv.
         * reflexivity.
   Qed.
 
-  Lemma synth_must_be_determine : forall e t f,
+  (** - [synth_must_be_determine]: Helping lemma, corollary of the previous
+      one and the injection of the synthesize judgment.*)
+  Corollary synth_must_be_determine : forall e t f,
       e ==> t -| f -> t = determine e /\ f [] = Some (determine e).
   Proof.
     intros. splitAnd.
     - destruct (synth_determine e). apply (synth_inj _ _ _ _ _ H H0).
-    - rewrite (synth_root _ _ _ H). subst. reflexivity.
+    - rewrite (synth_root _ _ _ H). congruence.
   Qed.
 
-  Lemma synth_check_determine_order : forall e1 e2 t1 t2 f1 f2,
+  (** - [synth_check_determine_order]: Helping lemma, corollary of
+      [synth_determine] and the ordering of synthesize and check.*)
+  Corollary synth_check_determine_order : forall e1 e2 t1 t2 f1 f2,
       e1 ==> t1 -| f1 -> e2 <== t2 -| f2 -> t2 <= t1 -> determine e2 <= determine e1.
   Proof.
     intros. destruct (synth_must_be_determine _ _ _ H) as [Ht Hf].
@@ -79,7 +89,9 @@ Module Equiv.
     apply (synth_check_order _ _ _ _ _ H2) in H0. apply (le_trans _ _ _ H0 H1).
   Qed.
 
-  Lemma synth_and_order : forall e f t,
+  (** - [synth_and_order]: Helping lemma, corollary of
+      [synth_determine] and the ordering of synthesize and check.*)
+  Corollary synth_and_order : forall e f t,
       e <== t -| f -> t <= determine e -> determine e = t.
   Proof.
     intros.
@@ -90,6 +102,10 @@ Module Equiv.
     - assumption.
   Qed.
 
+  (** ** Ltac utilities *)
+  (** [_gen_rel] and [_ts_gen]: Local automation tactics used to automatically
+    extract or generate equalities and relations between determined sizes
+    from the typing context. *)
   Ltac _gen_rel :=
     match goal with
     | [ H: ?e1 ==> ?t -| _, F: ?e2 <== ?t -| _ |- _ ] =>
@@ -116,6 +132,9 @@ Module Equiv.
     end
   .
 
+  (** - [spec_implies_ts]: Proves that the specification implies our type-system.
+      In other words, any function satisfying the propagation specification  is
+      the result of our type-system. *)
   Lemma spec_implies_ts:
     forall e f, propagate_def e f -> e ==> determine e -| cure_propagate e f.
   Proof.
@@ -141,6 +160,8 @@ Module Equiv.
      destruct (synth_determine e). rewrite <- (H0 _ H1). assumption.
   Qed.
 
+  (** - [ts_implies_spec]: Proves the converse direction:
+      the type-system derivation implies the propagation specification. *)
   Lemma ts_implies_spec: forall e f t, e ==> t -| cure_propagate e f -> propagate_def e f.
   Proof.
     Ltac _ts_spec :=
@@ -172,6 +193,9 @@ Module Equiv.
       congruence.
   Qed.
 
+  (** - [ts_equiv_spec]: Main equivalence theorem stating that the specification
+      and the type-system are logically equivalent: each can be derived from the
+      other. *)
   Theorem ts_equiv_spec : forall e f,
       propagate_def e f <-> e ==> determine e -| cure_propagate e f.
   Proof.

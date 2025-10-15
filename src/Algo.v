@@ -28,7 +28,7 @@ Import Learn.
 Module Algo.
   Fixpoint determine e :=
     match e with
-    | EAtom op => op
+    | EOperand op => op
     | EBinOp lhs rhs =>
         let lhs_size := determine lhs in
         let rhs_size := determine rhs in
@@ -59,7 +59,7 @@ Module Algo.
   Fixpoint propagate e target_size :=
     let annotate := TExpr in
     match e with
-    | EAtom op => annotate (TAtom op) target_size
+    | EOperand op => annotate (TOperand op) target_size
     | EBinOp lhs rhs =>
         let ann_lhs := propagate lhs target_size in
         let ann_rhs := propagate rhs target_size in

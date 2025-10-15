@@ -13,7 +13,7 @@ Module TaggedExpr.
     Unset Elimination Schemes.
 
     Inductive TaggedExprKind : Type :=
-    | TAtom (origSize: nat)
+    | TOperand (origSize: nat)
     | TBinOp (lhs rhs: TaggedExpr)
     | TUnOp (arg: TaggedExpr)
     | TComp (lhs rhs: TaggedExpr)
@@ -33,7 +33,7 @@ Module TaggedExpr.
     Variable P : TaggedExpr -> Prop.
 
     Hypothesis HPTAtom:
-      forall tag o, P (TExpr (TAtom o) tag).
+      forall tag o, P (TExpr (TOperand o) tag).
 
     Hypothesis HPTBinOp:
       forall tag lhs rhs, P lhs -> P rhs -> P (TExpr (TBinOp lhs rhs) tag).
@@ -81,7 +81,7 @@ Module TaggedExpr.
       match e with
       | TExpr eKind tag =>
           match eKind with
-          | TAtom o =>
+          | TOperand o =>
               HPTAtom tag o
           | TBinOp lhs rhs =>
               HPTBinOp tag _ _ (TaggedExpr_ind lhs) (TaggedExpr_ind rhs)
@@ -111,7 +111,7 @@ Module TaggedExpr.
 
   End TaggedExpr_def.
 
-  Arguments TAtom {T}.
+  Arguments TOperand {T}.
   Arguments TBinOp {T}.
   Arguments TUnOp {T}.
   Arguments TComp {T}.

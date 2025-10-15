@@ -14,11 +14,20 @@ Import ExprPath.
 Import Path.
 Import Utils.
 
+(** * Spec Module *)
+
+(** This module formalizes the specification for SystemVerilog expressions bit
+    sizing. *)
 Module Spec.
   Section SpecDef.
+
+    (** ** Self-Determined Size Computation — [determine] *)
+    (** The function [determine] defines how each expression computes its own
+        size, independent of external constraints. The computation proceeds
+        recursively from operands toward the root of the AST. *)
     Fixpoint determine e :=
       match e with
-      | EAtom op => op
+      | EOperand op => op
       | EBinOp lhs rhs => max (determine lhs) (determine rhs)
       | EUnOp arg => determine arg
       | EComp _ _ => 1
@@ -32,6 +41,19 @@ Module Spec.
       end
     .
 
+    (** ** Context-Determined Size Propagation — [propagate] *)
+    
+    (** After [determine] computes the self-determined size of the top-level
+        expression, the [propagate] process distributes *context-dependent*
+        sizes back down the AST. Each subexpression receives a *final size*,
+        which may differ from its self-determined size due to operator
+        constraints or contextual resizing.
+        
+        The function [propagate : path -> nat] assigns a bitwidth to each valid
+        path (subexpression) within a given expression [e]. Its behavior is
+        governed by structural rules that capture how sizing information flows
+        through the AST. *)
+    
     Variable e : Expr.
     Variable propagate : path -> nat.
 
@@ -85,7 +107,10 @@ Module Spec.
         propagate (p ++ [0]) = determine arg.
 
     Definition toplevel_propagate := propagate [] = determine e.
-
+    
+    (** [propagate_def] aggregates all constraints into a single specification
+        stating that a function [propagate] correctly implements context-driven
+        size propagation for a given expression [e]. *)
     Definition propagate_def :=
       toplevel_propagate /\ binop_propagate /\ unop_propagate /\ comp_propagate /\
         logic_propagate /\ red_propagate /\ shift_propagate /\ assign_propagate /\
@@ -107,8 +132,12 @@ Module Spec.
   Hint Unfold repl_propagate : Spec.
 
   Hint Unfold propagate_def : Spec.
-
-
+  
+  (** ** Proof Tactics *)
+  (** Helper tactics used to manipulate propagation assumptions: *)
+  
+  (** [prop_split]: Decomposes a hypothesis of the form [propagate_def e f]
+      into its propagation rules. *)
   Ltac prop_split :=
     match goal with
     | [ H: propagate_def _ _ |- _ ] =>
@@ -116,6 +145,8 @@ Module Spec.
     end
   .
 
+  (** [prop_gen_eq]: Specializes the appropriate propagation hypothesis
+      based on the syntactic form of a subexpression found in the goal. *)
   Ltac prop_gen_eq :=
     match goal with
     | [ H: toplevel_propagate _ _ |- _ ] =>
@@ -144,6 +175,9 @@ Module Spec.
     end
   .
 
+  (** [cure_propagate e f p]: Wraps a propagation function [f] to ensure
+      it only returns a value for valid paths in [e]. Returns [Some (f p)]
+      when [p] is a valid path, or [None] otherwise. *)
    Definition cure_propagate e (f: path -> nat) p :=
     match (IsPath_dec e p) with
     | left _ => Some (f p)
@@ -151,6 +185,11 @@ Module Spec.
     end
   .
 
+  (** ** Theorems *)
+  
+  (** [propagate_val]:
+      For every expression [e] and valid propagation function [f],
+      every valid path [p] in [e] yields the size of the expression: [f p]. *)
   Theorem propagate_val : forall e f, propagate_def e f -> forall p, IsPath e p -> exists n, f p = n.
   Proof.
     induction p using path_ind; intros.
@@ -160,6 +199,9 @@ Module Spec.
       destruct expr; inv H3; destruct (IHp He); eexists; firstorder.
   Qed.
 
+  (** [propagate_unique]:
+      If two functions [f1] and [f2] both satisfy the specification of propagate
+      for the same expression [e], then they agree on all valid paths of [e]. *)
   Theorem propagate_unique :
     forall e f1 f2, propagate_def e f1 -> propagate_def e f2 ->
                forall p, IsPath e p -> f1 p = f2 p.
@@ -171,6 +213,9 @@ Module Spec.
       destruct expr; inv H4; repeat prop_split; repeat prop_gen_eq; congruence.
   Qed.
 
+  (** [cured_propagate_unique]:
+      The cured (path-safe) versions of two propagate functions are
+      extensionally equal. *)
   Theorem cured_propagate_unique: forall e f1 f2,
       propagate_def e f1 -> propagate_def e f2 ->
       cure_propagate e f1 = cure_propagate e f2.

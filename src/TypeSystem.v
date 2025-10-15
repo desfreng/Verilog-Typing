@@ -6,7 +6,6 @@ From Stdlib Require Export Lia.
 
 From Verilog Require Import Expr.
 From Verilog Require Import ExprPath.
-(* From Verilog Require Import Spec. *)
 From Verilog Require Import Utils.
 
 Import ListNotations.
@@ -15,13 +14,16 @@ Import Nat.
 Import Expr.
 Import ExprPath.
 Import Path.
-(* Import Spec. *)
 Import Utils.
 
+
+(** * Typing system definition *)
+(** In this module, we define our typing system and prove some of its properties. *)
 Module TypeSystem.
 
+  (** Definition of resizable expressions. *)
   Variant Resizable : Expr -> Set :=
-  | ResAtom : forall op, Resizable (EAtom op)
+  | ResAtom : forall op, Resizable (EOperand op)
   | ResComp : forall lhs rhs, Resizable (EComp lhs rhs)
   | ResLogic : forall lhs rhs, Resizable (ELogic lhs rhs)
   | ResRed : forall e, Resizable (EReduction e)
@@ -30,6 +32,8 @@ Module TypeSystem.
   | ResRepl : forall amount arg, Resizable (ERepl amount arg)
   .
 
+
+  (** ** Functions Combinators *)
   Definition Initial t : path -> option nat :=
     fun p =>
       match p with
@@ -92,7 +96,7 @@ Module TypeSystem.
   Inductive synth : Expr -> nat -> (path -> option nat) -> Prop :=
   | AtomS : forall op f,
       f = Initial op ->
-      EAtom op ==> op -| f
+      EOperand op ==> op -| f
 
   | LBinOpS : forall a b t f fa fb,
       a ==> t -| fa ->
