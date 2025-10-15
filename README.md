@@ -18,14 +18,11 @@ This repository presents:
 4. **Verified Algorithm** – A reference implementation with proven correctness, equivalent to our type system
    ([`src/Algo.v`](src/Algo.v))
 
-The full proof can be explored online: [https://gabriel.desfrene.fr/verilog/proof](https://gabriel.desfrene.fr/verilog/proof)
-
 A Rocq extraction of the verified algorithm is available in [`src/Extr.v`](src/Extr.v).
 
 A proposal to amend the IEEE 1800 standard is available here:
 
 * [`proposal/proposal.pdf`](proposal/proposal.pdf)
-* [https://gabriel.desfrene.fr/verilog/proposal.pdf](https://gabriel.desfrene.fr/verilog/proposal.pdf)
 
 ## Getting Started
 
@@ -55,10 +52,3 @@ If you have a LaTeX distribution installed, you can build the documentation in t
 ```shell
 make tex
 ```
-
-## Authors
-
-* Gabriel Desfrene (École normale supérieure -- PSL)
-* Quentin Corradi (Imperial College London)
-* Michalis Pardalos (Imperial College London)
-* John Wickerson (Imperial College London)

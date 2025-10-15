@@ -19,7 +19,7 @@ build: RocqMakefile $(wildcard $(SRC_DIR)/*.v)
 doc: build
 	@echo "Generating documentation in $(DOC_DIR)"
 	mkdir -p $(DOC_DIR)
-	rocqnavi -Q $(SRC_DIR) Verilog -d $(DOC_DIR) -dependency-graph $(GRAPH_FILE) -short-names -show-type-information-using-coqtop-process $(wildcard $(SRC_DIR)/*.v) $(wildcard $(SRC_DIR)/*.glob)
+	rocqnavi -Q $(SRC_DIR) Verilog -d $(DOC_DIR) -dependency-graph $(GRAPH_FILE) -short-names $(wildcard $(SRC_DIR)/*.v) $(wildcard $(SRC_DIR)/*.glob)
 	@echo "Documentation generated."
 	@echo "See $(DOC_DIR)/index.html"
 
