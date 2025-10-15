@@ -1,8 +1,10 @@
-DOC_DIR    := doc
-SRC_DIR    := src
-THEORY_DIR := theory
+DOC_DIR      := doc
+SRC_DIR      := src
+THEORY_DIR   := theory
+PROPOSAL_DIR := proposal
 GRAPH_FILE := ./dependencies.dot
 THEORY_TEX := $(wildcard $(THEORY_DIR)/*.tex)
+PROPOSAL_TEX := $(wildcard $(PROPOSAL_DIR)/*.tex)
 
 .PHONY: build doc clean tex
 
@@ -28,9 +30,10 @@ clean: RocqMakefile
 	$(MAKE) --no-print-directory -f RocqMakefile clean
 	-rm RocqMakefile RocqMakefile.conf
 	-rm -rf $(DOC_DIR)
-	-latexmk -cd -C $(THEORY_TEX)
+	latexmk -cd -c $(THEORY_TEX)
+	latexmk -cd -c $(PROPOSAL_TEX)
 	@echo "Clean complete."
 
-tex: $(THEORY_TEX)
+tex: $(THEORY_TEX) $(PROPOSAL_TEX)
 	latexmk -cd -pdf $(THEORY_TEX)
-	latexmk -cd -c $(THEORY_TEX)
+	latexmk -cd -pdf $(PROPOSAL_TEX)
