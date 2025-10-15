@@ -1,5 +1,5 @@
 \documentclass{article}
-%\usepackage[T1]{fontenc}
+\usepackage[T1]{fontenc}
 \usepackage[a4paper, margin=2cm]{geometry}
 \usepackage[english]{babel}
 \usepackage[mono=false]{libertine}
@@ -17,8 +17,7 @@
 \usepackage{xcolor}
 
 \usepackage{minted}
-\usepackage{algorithm}
-\usepackage{algpseudocode}
+\usepackage[boxruled]{algorithm2e}
 
 \setminted{
   frame=lines,
@@ -29,15 +28,20 @@
 
 \newcommand{\sv}[1]{\mintinline{verilog}{#1}}
 
+\newcommand{\com}[1]{\textcolor{darkgray}{\tcp*[f]{#1}}}
+\newcommand{\kw}[1]{\textnormal{\texttt{#1}}}
+
+\SetKwSwitch{Switch}{Case}{Other}{switch}{do}{when}{otherwise}{}{}
+
+
 \newcommand{\tild}{\raisebox{-.7ex}{\textasciitilde{}}}
 
-\newcommand{\sds}{\emph{self-determined-size}}
+\newcommand{\sds}{\emph{self-determined width}}
 \newcommand{\mbr}{\emph{may be resized}}
 
 \newenvironment{typingrule}[1]%
 {\par\noindent\textbf{Rule (#1):} }%
 {\par}
-
 
 \newcommand{\binOp}{\texttt{+}, \texttt{-}, \texttt{*}, \texttt{/}, \texttt{\%},
 \texttt{\&}, \texttt{|}, \texttt{\^{}}, \texttt{\^{}\tild},
@@ -52,41 +56,31 @@
 \newcommand{\redOp}{\texttt{\&}, \texttt{\tild\&}, \texttt{|}, \texttt{\tild|},
 \texttt{\^{}}, \texttt{\tild\^{}}, \texttt{\^{}\tild}, \texttt{!}}
 
-\renewcommand{\Comment}[1]{\State \textcolor{gray}{// #1}}
-
-\algnewcommand\algorithmicswitch{\textbf{switch}}
-\algnewcommand\algorithmicendswitch{\textbf{end switch}}
-\algnewcommand\algorithmicwhen{\textbf{when}}
-\algnewcommand\algorithmicis{\textbf{is}}
-\algblockdefx{SWITCH}{ENDSWITCH}[1]{\algorithmicswitch\ #1}%
-{\algorithmicendswitch}
-\algblockdefx{WHEN}{ENDWHEN}[2][]{\algorithmicwhen\ #1 \algorithmicis\ #2:}{}
-
 \begin{document}
 
-\section{Expression bit lengths}%
-\label{expression-bit-lengths}
+\section{Expression bit-widths}%
+\label{expression-bit-widths}
 
 The number of bits of any expression is determined by the operands and the
-context in which it occurs. Casting can be used to set the target size of an
+context in which it occurs. Casting can be used to set the target width of an
 intermediate value (see 6.24).
 
 Controlling the number of bits that are used in expression evaluations is
 important if consistent results are to be achieved. The following typing system
-provides precise rules for determining expression bit lengths in all situations.
+provides precise rules for determining expression bit widths in all situations.
 
 \subsection{Bidirectional typing operations}%
 
-The bit length of expressions is defined using the fundamental concepts:
+The bit width of expressions is defined using the fundamental concepts:
 
 \begin{description}
-  \item[Self-determined size]
-    We call \sds{} the size that is intrinsic to an expression: i.e.~it is
+  \item[Self-determined width]
+    We call \sds{} the bit-width that is intrinsic to an expression: i.e.~it is
     solely based on the expression's internal structure and operands.
 
   \item[Resizing]
-    Expressions \mbr{} to sizes greater than or equal to their \sds{}. This
-    operation may change the size of the internal expression.
+    Expressions \mbr{} to bit-widths greater than or equal to their \sds{}. This
+    operation may change the width of the internal expression.
 \end{description}
 
 \subsection{Expression categories for resizing}%
@@ -97,7 +91,7 @@ resizing behavior:
 \subsubsection{Atomically resizable expressions}%
 
 Atomically resizable expressions \mbr{} without affecting their
-internal operand sizes. The following expressions are atomically resizable:
+internal operand width. The following expressions are atomically resizable:
 
 \begin{itemize}
   \item Operands as defined in 11.2 (nets, variables, literals, function
@@ -112,7 +106,7 @@ internal operand sizes. The following expressions are atomically resizable:
 \end{itemize}
 
 When an atomically resizable expression is resized to a
-target size, only the expression's result shall be extended --- its operands
+target width, only the expression's result shall be extended --- its operands
 shall remain unmodified.
 
 \begin{typingrule}{Atomic-Resize}
@@ -123,8 +117,8 @@ shall remain unmodified.
 \subsubsection{Non-atomically resizable expressions}%
 
 Non-atomically resizable expressions propagate resizing to their operands when
-a target size is specified. These expressions require their operands to be
-adjusted to specific sizes based on the resizing rules. The following expression
+a target width is specified. These expressions require their operands to be
+adjusted to specific widths based on the resizing rules. The following expression
 are not atomically resizable:
 
 \begin{itemize}
@@ -135,7 +129,7 @@ are not atomically resizable:
   \item Conditional expression: \texttt{?:}
 \end{itemize}
 
-Binary arithmetic and bitwise expressions propagate the target size to both
+Binary arithmetic and bitwise expressions propagate the target width to both
 operands:
 
 \begin{typingrule}{Binary-Resize}
@@ -143,13 +137,13 @@ operands:
 \end{typingrule}
 
 Unary arithmetic, unary bitwise negation and unary increment and decrement
-expressions propagate the target size to their single operand:
+expressions propagate the target width to their single operand:
 
 \begin{typingrule}{Unary-Resize}
   If $e$ \mbr{} to $n$, then $\oplus e$ \mbr{} to $n$.
 \end{typingrule}
 
-Shift and power expressions propagate the target size only to the left operand,
+Shift and power expressions propagate the target width only to the left operand,
 while the right operand remains \emph{self-determined}:
 
 \begin{typingrule}{Shift-Resize}
@@ -157,11 +151,11 @@ while the right operand remains \emph{self-determined}:
   $a \oplus b$ \mbr{} to $n$.
 \end{typingrule}
 
-Conditional expressions propagate the target size to both branch expressions,
+Conditional expressions propagate the target width to both branch expressions,
 while the condition remains \emph{self-determined}:
 
 \begin{typingrule}{Conditional-Resize}
-  If $c$ has a \sds{} size of $t_{C}$ and $t_{e}$ \mbr{} to $n$ and $f_{e}$
+  If $c$ has a \sds{} width of $t_{C}$ and $t_{e}$ \mbr{} to $n$ and $f_{e}$
   \mbr{} to $n$, then $c~\texttt{?}~t_{e}~\texttt{:}~f_{e}$ \mbr{} to $n$.
 \end{typingrule}
 
@@ -177,7 +171,7 @@ well-defined and determined by their declaration, literal specification, or
 result type:
 
 \begin{typingrule}{Operand-Size}
-  If $e$ is an operand and $s$ its size, then $e$ shall have a \sds{} of $s$.
+  If $e$ is an operand and $s$ its width, then $e$ shall have a \sds{} of $s$.
 \end{typingrule}
 
 Examples:
@@ -187,18 +181,18 @@ Examples:
     \verb|32'd123| has a \sds{} of 32,
   \item Unsized integer literals: \verb|123|, \verb|'hABC| have a
     \sds{} of at least 32 bits,
-  \item Parameters, nets, variables and structure fields have their size
+  \item Parameters, nets, variables and structure fields have their width
     defined by their declaration: \verb|logic [15:0] data| has a
     \sds{} of 16,
   \item Bit-select: \verb|data[5]| has a \sds{} of 1,
   \item Part-select: \verb|data[7:0]| has a \sds{} of 8,
     \verb|data[base +: 4]| has a \sds{} of 4,
-  \item Function calls: Have their size defined by their return type --- a
+  \item Function calls: Have their width defined by their return type --- a
     function returning \verb|logic [31:0]| has a
     \sds{} of 32,
   \item Variadic sized function calls: For functions whose return type depends
-    on their arguments, the arguments' sizes shall be determined as if
-    they were in an assignment context. Once all argument sizes are
+    on their arguments, the arguments' widths shall be determined as if
+    they were in an assignment context. Once all argument widths are
     determined, the function's result type becomes known and defines the
     \sds{}.
 \end{itemize}
@@ -206,15 +200,15 @@ Examples:
 \subsubsection{Binary arithmetic and bitwise expressions}%
 
 For binary arithmetic and bitwise expressions, the \sds{}
-is the maximum of the operand sizes. The smaller operand is \emph{resized}
-to match the larger operand's size.
+is the maximum of the operand widths. The smaller operand is \emph{resized}
+to match the larger operand's widths.
 
-\begin{typingrule}{Binary-Left-Size}
+\begin{typingrule}{Binary-Left-Width}
   If $a$ has a \sds{} of $t$ and $b$ \mbr{}
   to $t$, then $a \oplus b$ shall have a \sds{} of $t$.
 \end{typingrule}
 
-\begin{typingrule}{Binary-Right-Size}
+\begin{typingrule}{Binary-Right-Width}
   If $b$ has a \sds{} of $t$ and $a$ \mbr{}
   to $t$, then $a \oplus b$ shall have a \sds{} of $t$.
 \end{typingrule}
@@ -223,9 +217,9 @@ to match the larger operand's size.
 
 For unary expressions (Unary arithmetic, unary bitwise negation and unary
 increment and decrement), the \sds{} is identical to the
-operand size.
+operand width.
 
-\begin{typingrule}{Unary-Size}
+\begin{typingrule}{Unary-Width}
   If $e$ has a \sds{} of $t$, then $\oplus e$ shall have
   a \sds{} of $t$.
 \end{typingrule}
@@ -234,14 +228,14 @@ operand size.
 
 For relational and equality expressions, the \sds{} is
 always 1 bit. The smaller operand shall be resized to match the larger operand's
-size for comparison purposes.
+width for comparison purposes.
 
-\begin{typingrule}{Relational-Left-Size}
+\begin{typingrule}{Relational-Left-Width}
   If $a$ has a \sds{} of $t$ and $b$ \mbr{}
   to $t$, then $a \oplus b$ shall have a \sds{} of $1$.
 \end{typingrule}
 
-\begin{typingrule}{Relational-Right-Size}
+\begin{typingrule}{Relational-Right-Width}
   If $b$ has a \sds{} of $t$ and $a$ \mbr{}
   to $t$, then $a \oplus b$ shall have a \sds{} of $1$.
 \end{typingrule}
@@ -251,7 +245,7 @@ size for comparison purposes.
 For binary logical expressions, the \sds{} is always 1 bit.
 All operands are \emph{self-determined}.
 
-\begin{typingrule}{Logical-Size}
+\begin{typingrule}{Logical-Width}
   If $a$ has a \sds{} of $t_{a}$ and $b$ has a
   \sds{} of $t_{b}$, then $a \oplus b$ shall have a
   \sds{} of 1.
@@ -262,7 +256,7 @@ All operands are \emph{self-determined}.
 For reduction expressions, including \texttt{!}, the \sds{}
 is always 1 bit. The operand is \emph{self-determined}.
 
-\begin{typingrule}{Reduction-Size}
+\begin{typingrule}{Reduction-Width}
   If $e$ has a \sds{} of $t$, then $\oplus e$ shall have a
   \sds{} of 1.
 \end{typingrule}
@@ -272,7 +266,7 @@ is always 1 bit. The operand is \emph{self-determined}.
 For shift and power expressions, the \sds{} is determined
 by the left operand. The right operand shall be \emph{self-determined}.
 
-\begin{typingrule}{Shift-Size}
+\begin{typingrule}{Shift-Width}
   If $a$ has a \sds{} of $t$ and $b$ has a
   \sds{} of $t_{b}$, then $a \oplus b$ shall have a
   \sds{} of $t$.
@@ -281,17 +275,17 @@ by the left operand. The right operand shall be \emph{self-determined}.
 \subsubsection{Assignment expressions}%
 
 For assignment expressions, the \sds{} is determined by the
-left-hand side. When the left-hand side has a larger size than the right-hand
+left-hand side. When the left-hand side has a larger width than the right-hand
 side, the right-hand side shall \emph{be resized}. Otherwise, the right-hand
 side shall be \emph{self-determined}.
 
-\begin{typingrule}{Assignment-Left-Size}
-  If the left-hand side $l$ has a size of $t$ and $e$ \mbr{} to
+\begin{typingrule}{Assignment-Left-Width}
+  If the left-hand side $l$ has a width of $t$ and $e$ \mbr{} to
   $t$, then $l \oplus e$ shall have a \sds{} of $t$.
 \end{typingrule}
 
-\begin{typingrule}{Assignment-Right-Size}
-  If the left-hand side $l$ has a size of $t$, $e$ has a
+\begin{typingrule}{Assignment-Right-Width}
+  If the left-hand side $l$ has a width of $t$, $e$ has a
   \sds{} of $t_{e}$ and $t$ is smaller than $t_{e}$, then
   $l \oplus e$ shall have a \sds{} of $t$.
 \end{typingrule}
@@ -299,18 +293,18 @@ side shall be \emph{self-determined}.
 \subsubsection{Conditional expressions}%
 
 For conditional expressions using the \texttt{?:} operator, the
-\sds{} is the maximum size of the two branch expressions.
+\sds{} is the maximum width of the two branch expressions.
 The smaller branch shall be resized to match the larger branch. The condition
 shall be \emph{self-determined}.
 
-\begin{typingrule}{Conditional-Left-Size}
+\begin{typingrule}{Conditional-Left-Width}
   If $c$ has a \sds{} of $t_{c}$, $a$ has a
   \sds{} of $t$, and $b$ \mbr{} to $t$,
   then $c \verb|?| a \verb|:| b$ shall have a \sds{} of
   $t$.
 \end{typingrule}
 
-\begin{typingrule}{Conditional-Right-Size}
+\begin{typingrule}{Conditional-Right-Width}
   If $c$ has a \sds{} of $t_{c}$, $b$ has a
   \sds{} of $t$, and $a$ \mbr{} to $t$,
   then $c \verb|?| a \verb|:| b$ shall have a \sds{} of
@@ -320,9 +314,9 @@ shall be \emph{self-determined}.
 \subsubsection{Concatenation expressions}%
 
 For concatenation expressions, the \sds{} is the sum of the
-\emph{self-determined sizes} of all operands.
+\emph{self-determined widths} of all operands.
 
-\begin{typingrule}{Concatenation-Size}
+\begin{typingrule}{Concatenation-Width}
   If $e_{1}$ has a \sds{} of $t_{1}$, \ldots, $e_{k}$ has a
   \sds{} of $t_{k}$, and $t$ is the sum of
   $t_{1}, \dots, t_{k}$, then $\verb|{|e_{1}, \dots, e_{k}\verb|}|$ shall have
@@ -335,7 +329,7 @@ The \sds{} of a replication is the
 \sds{} of the inner concatenation multiplied by the
 replication amount.
 
-\begin{typingrule}{Replication-Size}
+\begin{typingrule}{Replication-Width}
   If $i$ is the amount of the replication and $e_{in}$ has a
   \sds{} of $t_{in}$, and $t$ is $i \times t_{in}$, then
   $\verb|{| i \verb|{| e_{in}\verb|}}|$ shall have a
@@ -357,41 +351,41 @@ logic [63:0] result;   // 64-bit result variable
 \subsection{Basic Expression Sizing}
 
 In the previous context, the expression \sv{var8} has
-\sds{} 8. Indeed, by rule \textbf{Operand-Size}:
+\sds{} 8. Indeed, by rule \textbf{Operand-Width}:
 \begin{itemize}
-  \item \sv{var8} is an operand with size 8 (by declaration
+  \item \sv{var8} is an operand with width 8 (by declaration
     \sv{logic [7:0] var8})
 \end{itemize}
 
 In the previous context, the expression \sv{var16[15:8] + 4'b1001} has
-\sds{} 8. Indeed, by rule \textbf{Binary-Left-Size}:
+\sds{} 8. Indeed, by rule \textbf{Binary-Left-Width}:
 
 \begin{itemize}
   \item \sv{var16[15:8]} has \sds{} 8 (by rule
-    \textbf{Operand-Size}, part-select of 8 bits)
+    \textbf{Operand-Width}, part-select of 8 bits)
   \item \sv{4'b1001} \mbr{} to 8 by rule \textbf{Resize}:
     \begin{itemize}
       \item \sv{4'b1001} has \sds{} 4 (by rule
-        \textbf{Operand-Size}, sized integer literal)
+        \textbf{Operand-Width}, sized integer literal)
       \item 8 is larger than 4
       \item \sv{4'b1001} is atomically resizable (operands are
         atomically resizable)
     \end{itemize}
 \end{itemize}
 
-If we tried to apply rule \textbf{Binary-Right-Size} on the previous expression
+If we tried to apply rule \textbf{Binary-Right-Width} on the previous expression
 we would end up stuck resizing \sv{var16[15:8]} to 4 bits.
 
 In the previous context, the expression \sv{var16[5] + 8'hFF} has
-\sds{} 8. Indeed, by rule \textbf{Binary-Right-Size}:
+\sds{} 8. Indeed, by rule \textbf{Binary-Right-Width}:
 
 \begin{itemize}
   \item \sv{8'hFF} has \sds{} 8 (by rule
-    \textbf{Operand-Size}, sized integer literal)
+    \textbf{Operand-Width}, sized integer literal)
   \item \sv{var16[5]} \mbr{} to 8 by rule \textbf{Resize}:
     \begin{itemize}
       \item \sv{var16[5]} has \sds{} 1 (by rule
-        \textbf{Operand-Size}, bit-select)
+        \textbf{Operand-Width}, bit-select)
       \item 8 is larger than 1
       \item \sv{var16[5]} is atomically resizable (operands are
         atomically resizable)
@@ -401,67 +395,67 @@ In the previous context, the expression \sv{var16[5] + 8'hFF} has
 \subsection{Relational Expression Example}
 
 In the previous context, the expression \sv{var16 > 16'd100} has
-\sds{} 1. Indeed, by rule \textbf{Relational-Left-Size}:
+\sds{} 1. Indeed, by rule \textbf{Relational-Left-Width}:
 
 \begin{itemize}
   \item \sv{var16} has \sds{} 16 (by rule
-    \textbf{Operand-Size}, declaration \sv{logic [15:0] var16})
+    \textbf{Operand-Width}, declaration \sv{logic [15:0] var16})
   \item \sv{16'd100} \mbr{} to 16 --- this is actually not
-    needed as it already has size 16:
+    needed as it already has width 16:
     \begin{itemize}
       \item \sv{16'd100} has \sds{} 16 (by rule
-        \textbf{Operand-Size}, sized integer literal)
+        \textbf{Operand-Width}, sized integer literal)
     \end{itemize}
 \end{itemize}
 
 \subsection{Reduction Expression Example}
 
 In the previous context, the expression \sv{&var16[7:0]} has
-\sds{} 1. Indeed, by rule \textbf{Reduction-Size}:
+\sds{} 1. Indeed, by rule \textbf{Reduction-Width}:
 
 \begin{itemize}
   \item \sv{var16[7:0]} has \sds{} 8 (by rule
-    \textbf{Operand-Size}, part-select of 8 bits)
+    \textbf{Operand-Width}, part-select of 8 bits)
 \end{itemize}
 
 \subsection{Replication Expression Example}
 
 In the previous context, the expression \sv{{4{var8}}} has
-\sds{} 32. Indeed, by rule \textbf{Replication-Size}:
+\sds{} 32. Indeed, by rule \textbf{Replication-Width}:
 
 \begin{itemize}
   \item The replication amount $i$ is 4
   \item \sv{var8} has \sds{} 8 (by rule
-    \textbf{Operand-Size}, declaration \sv{logic [7:0] var8})
-  \item The result size is $4 \times 8 = 32$
+    \textbf{Operand-Width}, declaration \sv{logic [7:0] var8})
+  \item The result width is $4 \times 8 = 32$
 \end{itemize}
 
 \subsection{Complex Replication with Concatenation}
 
 In the previous context, the expression \sv{{2{var16[7:0], 4'hF}}} has \sds{}
-24. With rule \textbf{Replication-Size}:
+24. With rule \textbf{Replication-Width}:
 
 \begin{itemize}
   \item The replication amount $i$ is 2
   \item The inner concatenation \sv{{var16[7:0], 4'hF}} has
-    \sds{} 12 by rule \textbf{Concatenation-Size}:
+    \sds{} 12 by rule \textbf{Concatenation-Width}:
     \begin{itemize}
       \item \sv{var16[7:0]} has \sds{} 8 (by rule
-        \textbf{Operand-Size}, part-select)
+        \textbf{Operand-Width}, part-select)
       \item \sv{4'hF} has \sds{} 4 (by rule
-        \textbf{Operand-Size}, sized literal)
+        \textbf{Operand-Width}, sized literal)
       \item Sum is $8 + 4 = 12$
     \end{itemize}
-  \item The result size is $2 \times 12 = 24$
+  \item The result width is $2 \times 12 = 24$
 \end{itemize}
 
-\subsection{Assignment with Target Size Extension}
+\subsection{Assignment with Target Width Extension}
 
 In the previous context, the expression \sv{var32 = var16[7:0] + 1} has
-\sds{} 32. With rule \textbf{Assignment-Left-Size}:
+\sds{} 32. With rule \textbf{Assignment-Left-Width}:
 
 \begin{itemize}
-  \item Left-hand side \sv{var32} has size 32 (by declaration
+  \item Left-hand side \sv{var32} has width 32 (by declaration
     \sv{logic [31:0] var32})
   \item Right-hand side \sv{var16[7:0] + 1} \mbr{} to 32 by
     rule \textbf{Binary-Resize}:
@@ -470,7 +464,7 @@ In the previous context, the expression \sv{var32 = var16[7:0] + 1} has
         \textbf{Resize}:
         \begin{itemize}
           \item \sv{var16[7:0]} has \sds{} 8
-            (by rule \textbf{Operand-Size}, part-select)
+            (by rule \textbf{Operand-Width}, part-select)
           \item 32 is larger than 8
           \item \sv{var16[7:0]} is atomically resizable
             (operands are atomically resizable)
@@ -483,21 +477,21 @@ In the previous context, the expression \sv{var32 = var16[7:0] + 1} has
 \subsection{Assignment with Result Truncation}
 
 In the previous context, the expression \sv{var8 = var32 + var16} has
-\sds{} 8. Indeed, by rule \textbf{Assignment-Right-Size}:
+\sds{} 8. Indeed, according to the rule \textbf{Assignment-Right-Width}:
 
 \begin{itemize}
-  \item Left-hand side \sv{var8} has size 8 (by declaration
+  \item Left-hand side \sv{var8} has width 8 (by declaration
     \sv{logic [7:0] var8})
   \item Right-hand side \sv{var32 + var16} has \sds{}
-    32 by rule \textbf{Binary-Left-Size}:
+    32 by rule \textbf{Binary-Left-Width}:
     \begin{itemize}
       \item \sv{var32} has \sds{} 32 (by rule
-        \textbf{Operand-Size}, declaration \sv{logic [31:0] var32})
+        \textbf{Operand-Width}, declaration \sv{logic [31:0] var32})
       \item \sv{var16} \mbr{} to 32 by rule
         \textbf{Resize}:
         \begin{itemize}
           \item \sv{var16} has \sds{} 16 (by rule
-            \textbf{Operand-Size}, declaration \sv{logic [15:0] var16})
+            \textbf{Operand-Width}, declaration \sv{logic [15:0] var16})
           \item 32 is larger than 16
           \item \sv{var16} is atomically resizable (operands are atomically
             resizable)
@@ -509,18 +503,18 @@ In the previous context, the expression \sv{var8 = var32 + var16} has
 \subsection{Conditional Expression with True Branch Determining Size}
 
 In the previous context, the expression \sv{cond ? var32 : var8} has
-\sds{} 32. Indeed, by rule \textbf{Conditional-Left-Size}:
+\sds{} 32. Indeed, according to the rule \textbf{Conditional-Left-Width}:
 
 \begin{itemize}
   \item Condition \sv{cond} has \sds{} 1 (by rule
-    \textbf{Operand-Size}, declaration \sv{logic cond})
+    \textbf{Operand-Width}, declaration \sv{logic cond})
   \item True branch \sv{var32} has \sds{} 32 (by rule
-    \textbf{Operand-Size}, declaration \sv{logic [31:0] var32})
+    \textbf{Operand-Width}, declaration \sv{logic [31:0] var32})
   \item False branch \sv{var8} \mbr{} to 32 by rule
     \textbf{Resize}:
     \begin{itemize}
       \item \sv{var8} has \sds{} 8 (by rule
-        \textbf{Operand-Size}, declaration \sv{logic [7:0] var8})
+        \textbf{Operand-Width}, declaration \sv{logic [7:0] var8})
       \item 32 is larger than 8
       \item \sv{var8} is atomically resizable (operands are atomically
         resizable)
@@ -530,19 +524,18 @@ In the previous context, the expression \sv{cond ? var32 : var8} has
 \subsection{Conditional Expression with False Branch Determining Size}
 
 In the previous context, the expression \sv{cond ? var8 : var32} has
-\sds{} 32. Indeed, by rule
-\textbf{Conditional-Right-Size}:
+\sds{} 32. Indeed, according to the rule \textbf{Conditional-Right-Width}:
 
 \begin{itemize}
   \item Condition \sv{cond} has \sds{} 1 (by rule
-    \textbf{Operand-Size}, declaration \sv{logic cond})
+    \textbf{Operand-Width}, declaration \sv{logic cond})
   \item False branch \sv{var32} has \sds{} 32 (by rule
-    \textbf{Operand-Size}, declaration \sv{logic [31:0] var32})
+    \textbf{Operand-Width}, declaration \sv{logic [31:0] var32})
   \item True branch \sv{var8} \mbr{} to 32 by rule
     \textbf{Resize}:
     \begin{itemize}
       \item \sv{var8} has \sds{} 8 (by rule
-        \textbf{Operand-Size}, declaration \sv{logic [7:0] var8})
+        \textbf{Operand-Width}, declaration \sv{logic [7:0] var8})
       \item 32 is larger than 8
       \item \sv{var8} is atomically resizable (operands are atomically
         resizable)
@@ -553,21 +546,21 @@ In the previous context, the expression \sv{cond ? var8 : var32} has
 
 In the previous context, the expression
 \sv{result = cond ? var32[7:0] : var32[15:8]} has \sds{}
-64. Indeed, by rule \textbf{Assignment-Left-Size}:
+64. Indeed, by rule \textbf{Assignment-Left-Width}:
 
 \begin{itemize}
-  \item Left-hand side \sv{result} has size 64 (by declaration
+  \item Left-hand side \sv{result} has width 64 (by declaration
     \sv{logic [63:0] result})
   \item Right-hand side \sv{cond ? var32[7:0] : var32[15:8]}
     \mbr{} to 64 by rule \textbf{Conditional-Resize}:
     \begin{itemize}
       \item Condition \sv{cond} has \sds{} 1 (by rule
-        \textbf{Operand-Size}, declaration \sv{logic cond})
+        \textbf{Operand-Width}, declaration \sv{logic cond})
       \item True branch \sv{var32[7:0]} \mbr{} to 64 by rule
         \textbf{Resize}:
         \begin{itemize}
           \item \sv{var32[7:0]} has \sds{} 8 (by rule
-            \textbf{Operand-Size}, part-select)
+            \textbf{Operand-Width}, part-select)
           \item 64 is larger than 8
           \item \sv{var32[7:0]} is atomically resizable (operands are
             atomically resizable)
@@ -576,7 +569,7 @@ In the previous context, the expression
         rule \textbf{Resize}:
         \begin{itemize}
           \item \sv{var32[15:8]} has \sds{} 8 (by rule
-            \textbf{Operand-Size}, part-select)
+            \textbf{Operand-Width}, part-select)
           \item 64 is larger than 8
           \item \sv{var32[15:8]} is atomically resizable (operands are
             atomically resizable)
@@ -587,177 +580,185 @@ In the previous context, the expression
 \appendix
 \section{Algorithm Overview}
 
-This appendix presents an algorithm to compute the size of all sub-expressions
+This appendix presents an algorithm to compute the width of all sub-expressions
 of a SystemVerilog expression. The algorithm operates in two phases:
 
 First, the \sds{} of the expression is computed using the algorithm
 \ref{alg:determine}. This algorithm traverses the expression
-tree bottom-up to determine the natural size of each expression based solely on
+tree bottom-up to determine the natural width of each expression based solely on
 its internal structure and operands.
 
 Second, the expression and all its sub-expressions are resized to the target
-size using the algorithm \ref{alg:propagate}. During this
+width using the algorithm \ref{alg:propagate}. During this
 propagation phase, all self-determined sub-expressions are resized to their
-\sds{}, while the other sub-expressions inherit their size from the surrounding
+\sds{}, while the other sub-expressions inherit their width from the surrounding
 context.
 
 Assuming that call to the \textsc{Determine} function are cached, the algorithm
 runs in linear time with respect to the number of operations in
 the SystemVerilog expression. The reasoning implemented in this algorithm
 follows the typing rules explained in the previous
-\autoref{expression-bit-lengths}.
+\autoref{expression-bit-widths}.
+
+\newcommand\Determine[1]{\textsc{determine}(#1)}
+\newcommand\Propagate[1]{\textsc{propagate}(#1)}
 
 \begin{algorithm}
-  \caption{Compute the \sds{} of an expression.}
+  \caption{Determine}
   \label{alg:determine}
-  \begin{algorithmic}[1]
-    \Procedure{Determine}{\texttt{expr}}
-    \Require \texttt{expr} must be a SystemVerilog expression.
-    \Ensure The output is the \sds{} of \texttt{expr}.
-    \SWITCH{\texttt{expr}}
-    \WHEN[\texttt{expr}]{operand}
-    \State The \sds{} is the operand's declared or literal size.
-    \ENDWHEN
-    \WHEN[\texttt{expr}]{$\texttt{lhs}\oplus\texttt{rhs}$}
-    \Comment{$\oplus$ can be \binOp{}}
-    \State Compute the \sds{} of \texttt{lhs}, as \texttt{lhs\_size}.
-    \State Compute the \sds{} of \texttt{rhs}, as \texttt{rhs\_size}.
-    \State The \sds{} of \texttt{expr} is $\max\big(\texttt{lhs\_size}, \texttt{rhs\_size}\big)$.
-    \ENDWHEN
-    \WHEN[\texttt{expr}]{$\oplus\texttt{arg}$}
-    \Comment{$\oplus$ can be \unOp{}}
-    \State Compute the \sds{} of \texttt{arg}, as \texttt{arg\_size}.
-    \State The \sds{} of \texttt{expr} is \texttt{arg\_size}.
-    \ENDWHEN
-    \WHEN[\texttt{expr}]{$\texttt{lhs}\oplus\texttt{rhs}$}
-    \Comment{$\oplus$ can be \compOp{}}
-    \State The \sds{} of \texttt{expr} is $1$ bit.
-    \ENDWHEN
-    \WHEN[\texttt{expr}]{$\texttt{lhs}\oplus\texttt{rhs}$}
-    \Comment{$\oplus$ can be \logicOp{}}
-    \State The \sds{} of \texttt{expr} is $1$ bit.
-    \ENDWHEN
-    \WHEN[\texttt{expr}]{$\oplus\texttt{arg}$}
-    \Comment{$\oplus$ can be \redOp{}}
-    \State The \sds{} of \texttt{expr} is $1$ bit.
-    \ENDWHEN
-    \WHEN[\texttt{expr}]{$\texttt{lhs}\oplus\texttt{rhs}$}
-    \Comment{$\oplus$ can be \shiftOp{}}
-    \State Compute the \sds{} of \texttt{lhs} as \texttt{lhs\_size}.
-    \State The \sds{} of \texttt{expr} is \texttt{lhs\_size}.
-    \ENDWHEN
-    \WHEN[\texttt{expr}]{$\texttt{lval}\texttt{~=~}\texttt{rhs}$}
-    \State Retrieve the size of the left-hand side variable \texttt{lval} as \texttt{lval\_size}.
-    \State The \sds{} of \texttt{expr} is \texttt{lval\_size}.
-    \ENDWHEN
-    \WHEN[\texttt{expr}]{$\texttt{cond}~\texttt{?}~\texttt{true\_expr}~\texttt{:}~\texttt{false\_expr}$}
-    \State Compute the \sds{} of \texttt{true\_expr}, as \texttt{true\_size}.
-    \State Compute the \sds{} of \texttt{false\_expr}, as \texttt{false\_size}.
-    \State The \sds{} of \texttt{expr} is $\max\big(\texttt{true\_size}, \texttt{false\_size}\big)$.
-    \ENDWHEN
-    \WHEN[\texttt{expr}]{$\texttt{\{}\texttt{expr}_{1}\texttt{,}\texttt{expr}_{2}\texttt{,}\ldots\texttt{,}\texttt{expr}_{N}\texttt{\}}$}
-    \For{$i \in \{1, \dots, N\}$}
-    \State Compute the \sds{} of \texttt{expr}$_{i}$, as \texttt{expr\_i\_size}.
-    \EndFor
-    \State The \sds{} of \texttt{expr} is $\texttt{expr\_1\_size} + \dots + \texttt{expr\_N\_size}$.
-    \ENDWHEN
-    \WHEN[\texttt{expr}]{$\texttt{\{}N\texttt{\{}\texttt{inner\_expr}\texttt{\}}\texttt{\}}$}
-    \State Compute the \sds{} of \texttt{inner\_expr}, as \texttt{inner\_size}.
-    \State The \sds{} of \texttt{expr} is $N \times \texttt{inner\_size}$.
-    \ENDWHEN
-    \ENDSWITCH
-    \EndProcedure
-  \end{algorithmic}
+
+  \SetKwData{Expr}{expr}
+  \SetKwData{Lhs}{lhs}
+  \SetKwData{LhsW}{lhs\textsubscript{w}}
+  \SetKwData{Rhs}{rhs}
+  \SetKwData{RhsW}{rhs\textsubscript{w}}
+  \SetKwData{Arg}{arg}
+  \SetKwData{ArgW}{arg\textsubscript{w}}
+  \SetKwData{Lval}{lval}
+  \SetKwData{LvalW}{lval\textsubscript{w}}
+  \SetKwData{Cond}{cond}
+  \SetKwData{CondW}{cond\textsubscript{w}}
+  \SetKwData{ExprA}{expr\textsubscript{1}}
+  \SetKwData{ExprN}{expr\textsubscript{N}}
+  \SetKwData{ExprI}{expr\textsubscript{i}}
+  \SetKwData{WidthI}{width\textsubscript{i}}
+
+  \DontPrintSemicolon
+  \SetAlgoVlined
+  \LinesNumbered
+
+  \KwIn{A SystemVerilog expression \Expr}
+  \KwOut{The self-determined width of \Expr}
+  \BlankLine
+  \Switch{\Expr}{
+    \Case{\Expr is an operand}{
+      \Return{$\Gamma\left(\Expr\right)$}\;
+    }
+    \Case(\com{$\oplus$ can be \binOp{}}){\Expr is $\Lhs\oplus\Rhs$}{
+      $\LhsW \leftarrow \Determine{\Lhs}$\;
+      $\RhsW \leftarrow \Determine{\Rhs}$\;
+      \Return{$\max\big(\LhsW, \RhsW\big)$}\;
+    }
+    \Case(\com{$\oplus$ can be \unOp{}}){\Expr is $\oplus\Arg$}{
+      $\ArgW \leftarrow \Determine{\Arg}$\;
+      \Return{\ArgW}\;
+    }
+    \Case(\com{$\oplus$ can be \compOp{}}){\Expr is $\Lhs\oplus\Rhs$}{
+      \Return{$1$}\;
+    }
+    \Case(\com{$\oplus$ can be \logicOp{}}){\Expr is $\Lhs\oplus\Rhs$}{
+      \Return{$1$}\;
+    }
+    \Case(\com{$\oplus$ can be \redOp{}}){\Expr is $\oplus\Arg$}{
+      \Return{$1$}\;
+    }
+    \Case(\com{$\oplus$ can be \shiftOp{}}){\Expr is $\Lhs\oplus\Rhs$}{
+      $\LhsW \leftarrow \Determine{\Lhs}$\;
+      \Return{\LhsW}\;
+    }
+    \Case{\Expr is $\Lval\kw{~=~}\Rhs$}{
+      $\LvalW \leftarrow \phi(\Lval)$\;
+      \Return{\LvalW}\;
+    }
+    \Case{\Expr is $\Cond\kw{~?~}\Lhs\kw{~:~}\Rhs$}{
+      $\LhsW \leftarrow \Determine{\Lhs}$\;
+      $\RhsW \leftarrow \Determine{\Rhs}$\;
+      \Return{$\max\left(\LhsW,\RhsW\right)$}\;
+    }
+    \Case{\Expr is $\kw{\{}\ExprA,\kw{~\dots~},\ExprN\kw{\}}$}{
+      \For{$i \in \{1, \dots, N\}$}{
+        $\WidthI \leftarrow \Determine{\ExprI}$\;
+      }
+      \Return{$\sum_{i=0}^{N}\WidthI$}\;
+    }
+    \Case{\Expr is $\kw{\{}n~\Arg\kw{\}}$}{
+      $\ArgW \leftarrow \Determine{\Arg}$\;
+      \Return{$n\times\ArgW$}\;
+    }
+  }
 \end{algorithm}
 
 \begin{algorithm}
-  \caption{Resize an expression, propagating the size.}
+  \caption{Propagate}
   \label{alg:propagate}
-  \begin{algorithmic}[1]
-    \Procedure{Propagate}{\texttt{expr}, \texttt{target\_size}}
-    \Require \texttt{expr} is a SystemVerilog expression. \texttt{target\_size} is the size \texttt{expr} will be resized to.
-    \Ensure All sub-expressions of \texttt{expr} are annotated with their final size in \texttt{expr}.
-    \SWITCH{\texttt{expr}}
-    \WHEN[\texttt{expr}]{operand}
-    \State Annotate \texttt{expr} with \texttt{target\_size}.
-    \ENDWHEN
-    \WHEN[\texttt{expr}]{$\texttt{lhs}\oplus\texttt{rhs}$}
-    \Comment{$\oplus$ can be \binOp{}}
-    \State Propagate \texttt{target\_size} into \texttt{lhs}.
-    \State Propagate \texttt{target\_size} into \texttt{rhs}.
-    \State Annotate \texttt{expr} with \texttt{target\_size}.
-    \ENDWHEN
-    \WHEN[\texttt{expr}]{$\oplus\texttt{arg}$}
-    \Comment{$\oplus$ can be \unOp{}}
-    \State Propagate \texttt{target\_size} into \texttt{arg}.
-    \State Annotate \texttt{expr} with \texttt{target\_size}.
-    \ENDWHEN
-    \WHEN[\texttt{expr}]{$\texttt{lhs}\oplus\texttt{rhs}$}
-    \Comment{$\oplus$ can be \compOp{}}
-    \State Compute the \sds{} of \texttt{lhs}, as \texttt{lhs\_size}.
-    \State Compute the \sds{} of \texttt{rhs}, as \texttt{rhs\_size}.
-    \State Let \texttt{arg\_size} be $\max\big(\texttt{lhs\_size}, \texttt{rhs\_size}\big)$.
-    \State Propagate \texttt{arg\_size} into \texttt{lhs}.
-    \State Propagate \texttt{arg\_size} into \texttt{rhs}.
-    \State Annotate \texttt{expr} with \texttt{target\_size}.
-    \ENDWHEN
-    \WHEN[\texttt{expr}]{$\texttt{lhs}\oplus\texttt{rhs}$}
-    \Comment{$\oplus$ can be \logicOp{}}
-    \State Compute the \sds{} of \texttt{lhs}, as \texttt{lhs\_size}.
-    \State Propagate \texttt{lhs\_size} into \texttt{lhs}.
-    \State Compute the \sds{} of \texttt{rhs}, as \texttt{rhs\_size}.
-    \State Propagate \texttt{rhs\_size} into \texttt{rhs}.
-    \State Annotate \texttt{expr} with \texttt{target\_size}.
-    \ENDWHEN
-    \WHEN[\texttt{expr}]{$\oplus\texttt{arg}$}
-    \Comment{$\oplus$ can be \redOp{}}
-    \State Compute the \sds{} of \texttt{arg}, as \texttt{arg\_size}.
-    \State Propagate \texttt{arg\_size} into \texttt{arg}.
-    \State Annotate \texttt{expr} with \texttt{target\_size}.
-    \ENDWHEN
-    \WHEN[\texttt{expr}]{$\texttt{lhs}\oplus\texttt{rhs}$}
-    \Comment{$\oplus$ can be \shiftOp{}}
-    \State Propagate \texttt{target\_size} into \texttt{lhs}.
-    \State Compute the \sds{} of \texttt{rhs}, as \texttt{rhs\_size}.
-    \State Propagate \texttt{rhs\_size} into \texttt{rhs}.
-    \State Annotate \texttt{expr} with \texttt{target\_size}.
-    \ENDWHEN
-    \algstore{propagateAlg}
-  \end{algorithmic}
-\end{algorithm}
 
-\begin{algorithm}
-  \begin{algorithmic}[1]
-    \algrestore{propagateAlg}
-    \WHEN[\texttt{expr}]{$\texttt{lval}\texttt{~=~}\texttt{rhs}$}
-    \State Let \texttt{lval\_size} be the size of the left-hand side \texttt{lval}.
-    \State Compute the \sds{} of \texttt{rhs}, as \texttt{rhs\_size}.
-    \State Let \texttt{arg\_size} be $\max\big(\texttt{lval\_size}, \texttt{rhs\_size}\big)$.
-    \State Propagate \texttt{arg\_size} into \texttt{rhs}.
-    \State Annotate \texttt{expr} with \texttt{target\_size}.
-    \ENDWHEN
-    \WHEN[\texttt{expr}]{$\texttt{cond}~\texttt{?}~\texttt{true\_expr}~\texttt{:}~\texttt{false\_expr}$}
-    \State Compute the \sds{} of \texttt{cond}, as \texttt{cond\_size}.
-    \State Propagate \texttt{cond\_size} into \texttt{cond}.
-    \State Propagate \texttt{target\_size} into \texttt{true\_expr}.
-    \State Propagate \texttt{target\_size} into \texttt{false\_expr}.
-    \State Annotate \texttt{expr} with \texttt{target\_size}.
-    \ENDWHEN
-    \WHEN[\texttt{expr}]{$\texttt{\{}\texttt{expr}_{1}\texttt{,}\texttt{expr}_{2}\texttt{,}\ldots\texttt{,}\texttt{expr}_{N}\texttt{\}}$}
-    \For{$i \in \{1, \ldots, N\}$}
-    \State Compute the \sds{} of \texttt{expr}$_{i}$, as \texttt{expr\_i\_size}.
-    \State Propagate \texttt{expr\_i\_size} into \texttt{expr}$_{i}$.
-    \EndFor
-    \State Annotate \texttt{expr} with \texttt{target\_size}.
-    \ENDWHEN
-    \WHEN[\texttt{expr}]{$\texttt{\{}N\texttt{\{}\texttt{inner\_expr}\texttt{\}}\texttt{\}}$}
-    \State Compute the \sds{} of \texttt{inner\_expr}, as \texttt{inner\_size}.
-    \State Propagate \texttt{inner\_size} into \texttt{inner\_expr}.
-    \State Annotate \texttt{expr} with \texttt{target\_size}.
-    \ENDWHEN
-    \ENDSWITCH
-    \EndProcedure
-  \end{algorithmic}
+  \SetKwData{Expr}{expr}
+  \SetKwData{TargetW}{targetWidth}
+  \SetKwData{Lhs}{lhs}
+  \SetKwData{LhsW}{lhs\textsubscript{w}}
+  \SetKwData{Rhs}{rhs}
+  \SetKwData{RhsW}{rhs\textsubscript{w}}
+  \SetKwData{Arg}{arg}
+  \SetKwData{ArgW}{arg\textsubscript{w}}
+  \SetKwData{Lval}{lval}
+  \SetKwData{LvalW}{lval\textsubscript{w}}
+  \SetKwData{Cond}{cond}
+  \SetKwData{CondW}{cond\textsubscript{w}}
+  \SetKwData{ExprA}{expr\textsubscript{1}}
+  \SetKwData{ExprN}{expr\textsubscript{N}}
+  \SetKwData{ExprI}{expr\textsubscript{i}}
+  \SetKwData{WidthI}{width\textsubscript{i}}
+
+  \DontPrintSemicolon
+  \SetAlgoVlined
+  \LinesNumbered
+
+  \KwIn{A SystemVerilog expression \Expr, A \TargetW to resize \Expr to.}
+  \KwResult{All sub-expressions of \Expr are annotated with their final width}
+  \Switch{\Expr}{
+    \Case{\Expr is an operand}{
+      Annotate \Expr with \TargetW\;
+    }
+    \Case(\com{$\oplus$ can be \binOp{}}){\Expr is $\Lhs\oplus\Rhs$}{
+      \Propagate{\Lhs, \TargetW}\;
+      \Propagate{\Rhs, \TargetW}\;
+      Annotate \Expr with \TargetW\;
+    }
+    \Case(\com{$\oplus$ can be \unOp{}}){\Expr is $\oplus\Arg$}{
+      \Propagate{\Arg, \TargetW}\;
+      Annotate \Expr with \TargetW\;
+    }
+    \Case(\com{$\oplus$ can be \compOp{}}){\Expr is $\Lhs\oplus\Rhs$}{
+      $\ArgW \leftarrow \max\left(\Determine{\Lhs}, \Determine{\Rhs}\right)$\;
+      \Propagate{\Lhs, \ArgW}\;
+      \Propagate{\Rhs, \ArgW}\;
+      Annotate \Expr with \TargetW\;
+    }
+    \Case(\com{$\oplus$ can be \logicOp{}}){\Expr is $\Lhs\oplus\Rhs$}{
+      \Propagate{\Lhs, \Determine{\Lhs}}\;
+      \Propagate{\Rhs, \Determine{\Rhs}}\;
+      Annotate \Expr with \TargetW\;
+    }
+    \Case(\com{$\oplus$ can be \redOp{}}){\Expr is $\oplus\Arg$}{
+      \Propagate{\Arg, \Determine{\Arg}}\;
+      Annotate \Expr with \TargetW\;
+    }
+    \Case(\com{$\oplus$ can be \shiftOp{}}){\Expr is $\Lhs\oplus\Rhs$}{
+      \Propagate{\Lhs, \TargetW}\;
+      \Propagate{\Rhs, \Determine{\Rhs}}\;
+      Annotate \Expr with \TargetW\;
+    }
+    \Case{\Expr is $\Lval\kw{~=~}\Rhs$}{
+      \Propagate{\Rhs, $\max\left(\phi(\Lval), \Determine{\Rhs}\right)$}\;
+      Annotate \Expr with \TargetW\;
+    }
+    \Case{\Expr is $\Cond\kw{~?~}\Lhs\kw{~:~}\Rhs$}{
+      \Propagate{\Cond, \Determine{\Cond}}\;
+      \Propagate{\Lhs, \TargetW}\;
+      \Propagate{\Rhs, \TargetW}\;
+      Annotate \Expr with \TargetW\;
+    }
+    \Case{\Expr is $\kw{\{}\ExprA,\kw{~\dots~},\ExprN\kw{\}}$}{
+      \For{$i \in \{1, \dots, N\}$}{
+        \Propagate{\ExprI, \Determine{\ExprI}}\;
+      }
+      Annotate \Expr with \TargetW\;
+    }
+    \Case{\Expr is $\kw{\{}n~\Arg\kw{\}}$}{
+      \Propagate{\Arg, \Determine{\Arg}}\;
+      Annotate \Expr with \TargetW\;
+    }
+  }
 \end{algorithm}
 
 \end{document}
