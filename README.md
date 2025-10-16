@@ -21,7 +21,6 @@ This repository presents:
 A Rocq extraction of the verified algorithm is available in [`src/Extr.v`](src/Extr.v).
 
 A proposal to amend the IEEE 1800 standard is available in [`proposal/proposal.pdf`](proposal/proposal.pdf).
-The content that this proposal ought to replace is shown in [`proposal/lrm-diff.pdf`](proposal/lrm-diff.pdf).
 
 ## Getting Started
 

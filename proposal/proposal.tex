@@ -18,9 +18,42 @@
 
 \usepackage{xcolor}
 
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{array}
+
+\usepackage{cite}
+
 \usepackage{minted}
 \usepackage[boxruled]{algorithm2e}
 \usepackage{csquotes}
+\usepackage[most]{tcolorbox}
+
+\newcommand{\lrm}[2]{\cite[\S #1, p. #2]{IEEE1800}}
+
+\NewDocumentEnvironment{lrmquote}{m m}{%
+  \setlength\topsep{1pt}
+  \setlength\parskip{0pt}
+  \begin{center}
+  \begin{minipage}{\textwidth}
+  \begin{tcolorbox}[
+    empty,
+    colback=white,
+    sharp corners,
+    borderline west={2.5pt}{0pt}{black!20},
+    before skip=0pt,
+    after skip=0pt,
+    left=5pt,
+    right=5pt,
+    top=10pt,
+    bottom=10pt
+  ]
+}{%
+  \nobreak\hfill\lrm{#1}{#2}
+  \end{tcolorbox}
+  \end{minipage}
+  \end{center}
+}
 
 \setminted{
   frame=lines,
@@ -33,6 +66,10 @@
 
 \newcommand{\com}[1]{\textcolor{darkgray}{\tcp*[f]{#1}}}
 \newcommand{\kw}[1]{\textnormal{\texttt{#1}}}
+
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+
+\DeclareMathOperator{\Size}{L}
 
 \SetKwSwitch{Switch}{Case}{Other}{switch}{do}{when}{otherwise}{}{}
 
@@ -60,7 +97,7 @@
 \texttt{\^{}}, \texttt{\tild\^{}}, \texttt{\^{}\tild}, \texttt{!}}
 
 \title{Proposal for Improving Expression Size Determination in IEEE 1800
-SystemVerilog}
+  SystemVerilog}
 \author{Authors}
 \date{}
 
@@ -69,25 +106,26 @@ SystemVerilog}
 
 This document contains a proposal for inclusion in the current SystemVerilog
 Language Reference Manual (LRM), IEEE 1800-2023, to clarify and formalize the
-rules for determining expression bit-widths. It is designed to replace the
-content highlighted in the document ``Highlighted LRM Sections for Revision.''
+rules for determining expression bit-widths.
+
+Paragraphs with a gray border on the left are extracts taken directly from the
+latest version of the LRM. The sections containing text highlighted in
+\textcolor{red}{red} represent the specific content we believe could be replaced
+with our proposal. Our propositions are organized as follows:
 
 \begin{description}
   \item[\Crefrange{expression-bit-widths}{self-determined} (Expression bit-widths):]
-    This material is proposed as replacement for the sub-sections in 11.6 of the
-    current LRM. It introduces a revised formalization for bit-width
+    This material introduces a revised formalization for bit-width
     determination, complete with rules governing this process, applicable to
-    all SystemVerilog expressions. This content is a draft intended to
-    replace existing content within the designated LRM section.
+    all SystemVerilog expressions.
 
   \item[\Cref{examples} (Examples of bit-widths determination):]
     This section provides examples demonstrating the use of the bit-width
-    determination rules defined in the preceding section. This content is
-    proposed to extend the existing Section 11.6.3 of the LRM. The current
+    determination rules defined in the preceding section. The current
     version of the LRM offers a limited number of examples, primarily
     focusing on self-determined expressions. This draft proposes an update
-    for this section, with the new bit-width determination mechanism and
-    extensive examples for all kinds of SystemVerilog expressions.
+    to this section, incorporating the new bit-width determination mechanism
+    and extensive examples for all kinds of SystemVerilog expressions.
 
   \item[\Cref{algorithm-overview} (Algorithmic Overview):]
     This content is proposed as a technical Appendix to the LRM. It formally
@@ -101,11 +139,212 @@ content highlighted in the document ``Highlighted LRM Sections for Revision.''
   \noindent\rule{.8\textwidth}{1pt}
 \end{center}
 
+\renewcommand{\thesection}{11.4.\arabic{section}}
+\setcounter{section}{3}
+
+\begin{lrmquote}{11.4.4}{278}
+  \section{Relational operators}
+
+  \textelp{}
+
+  When one or both operands of a relational expression are unsigned, the
+  expression shall be interpreted as a comparison between unsigned values.
+    {
+      \color{red}
+      If the operands are of unequal bit lengths, the smaller operand
+      shall be zero-extended to the size of the larger operand.
+    }
+
+  When both operands are signed, the expression shall be interpreted as a
+  comparison between signed values.
+    {
+      \color{red}
+      If the operands are of unequal bit
+      lengths, the smaller operand shall be sign-extended to the size of the larger
+      operand. See 11.8.2 for more information.
+    }
+
+  If either operand is a real operand, then the other operand shall be converted to
+  an equivalent real value and the expression shall be interpreted as a comparison
+  between real values.
+
+  \textelp{}
+\end{lrmquote}
+
+\begin{lrmquote}{11.4.5}{279}
+  \section{Equality operators}
+
+  \textelp{}
+
+  When one or both operands are unsigned, the expression shall be interpreted as a
+  comparison between unsigned values.
+    {
+      \color{red}
+      If the operands are of unequal bit
+      lengths, the smaller operand shall be zero-extended to the size of the larger
+      operand.
+    }
+
+  When both operands are signed, the expression shall be interpreted as a
+  comparison between signed values.
+    {
+      \color{red}
+      If the operands are of unequal bit
+      lengths, the smaller operand shall be sign-extended to the size of the larger
+      operand. See 11.8.2 for more information.
+    }
+
+  If either operand is a real operand, then the other operand shall be converted
+  to an equivalent real value, and the expression shall be interpreted as a
+  comparison between real values.
+
+  \textelp{}
+\end{lrmquote}
+
+\setcounter{section}{7}
+
+\begin{lrmquote}{11.4.8}{281}
+
+  \section{Bitwise operators}
+
+  \textelp{}
+
+  For the binary bitwise operators, if one or both operands are unsigned, the
+  result is unsigned.
+    {
+      \color{red}
+      If the operands are of unequal bit lengths, the smaller
+      operand shall be zero-extended to the size of the larger operand.
+    }
+
+  If both operands are signed, the result is signed.
+    {
+      \color{red}
+      If the operands are of
+      unequal bit lengths, the smaller operand shall be sign-extended to the size of
+      the larger operand. See 11.8.2 for more information.
+    }
+
+  For the unary bitwise negation operator, if the operand is unsigned, the result
+  is unsigned. If the operand is signed, the result is signed.
+
+  \textelp{}
+\end{lrmquote}
+
 \renewcommand{\thesection}{11.6.\arabic{section}}
 \setcounter{section}{0}
 
-\section{Expression bit-widths}%
-\label{expression-bit-widths}
+\begin{lrmquote}{11.6.1}{299}
+  \section{Rules for expression bit width}
+  \label{expression-bit-widths}
+
+  {
+    \color{red}
+
+    The rules governing the expression bit lengths have been formulated so that most
+    practical situations have a natural solution.
+
+    The number of bits of an expression (known as the \emph{size} of the
+    expression) shall be determined by the operands involved in the expression and
+    the context in which the expression is given.
+
+    A \emph{self-determined expression} is one where the bit length of the expression is
+    solely determined by the expression itself—for example, an expression
+    representing a delay value.
+
+    A \emph{context-determined expression} is one where the bit length of the expression is
+    determined by the bit length of the expression and by the fact that it is part
+    of another expression. For example, the bit size of the right-hand expression of
+    an assignment depends on itself and the size of the left-hand side.
+
+    Table~11-21 shows how the form of an expression shall determine the bit lengths
+    of the results of the expression. In Table~11-21, \texttt{i}, \texttt{j}, and
+    \texttt{k} represent expressions of an operand, and \texttt{L(i)} represents the
+    bit length of the operand represented by \texttt{i}.
+
+    \begin{center}
+      \textbf{Table 11-21---Bit lengths resulting from self-determined expressions}
+      \begin{longtable}{|p{0.35\linewidth}|C{0.25\linewidth}|C{0.3\linewidth}|}
+        \hline
+        \centering \textbf{Expression}
+         & \textbf{Bit length}
+         & \textbf{Comments}
+        \\
+        \hline
+        Unsized constant number
+         & At least 32 bits
+         &
+        \\
+        \hline
+        Sized constant number
+         & As given
+         &
+        \\
+        \hline
+        \verb|i op j|, where op is:
+
+        \binOp{}
+         & $\max\left(\Size(i), \Size(j)\right)$
+         &
+        \\
+        \hline
+        \verb|op i|, where op is:
+
+        \unOp{}
+         & $\Size(i)$
+         &
+        \\
+        \hline
+        \verb|i op j|, where op is:
+
+        \compOp{}
+         & 1 bit
+         & Operands are sized to $\max\left(\Size(i), \Size(j)\right)$ \\
+        \hline
+        \verb|i op j|, where op is:
+
+        \logicOp{}
+         & 1 bit
+         & All operands are self-determined
+        \\
+        \hline
+        \verb|op i|, where op is:
+
+        \redOp{}
+         & 1 bit
+         & All operands are self-determined
+        \\
+        \hline
+        \verb|i op j|, where op is:
+
+        \shiftOp{}
+         & $\Size(i)$
+         & j is self-determined
+        \\
+        \hline
+        \verb|i ? j : k|
+         & $\max\left(\Size(j), \Size(k)\right)$
+         & i is self-determined
+        \\
+        \hline
+        \verb|{i, ..., j}|
+         & $\Size(i) + \dots + \Size(j)$
+         & All operands are self-determined
+        \\
+        \hline
+        \verb|{i {j, ..., k}}|
+         & $i\times\left(\Size(i) + \dots + \Size(j)\right)$
+         & All operands are self-determined
+        \\
+        \hline
+      \end{longtable}
+    \end{center}
+
+    Multiplication may be performed without losing any overflow bits by assigning
+    the result to something wide enough to hold it.
+  }
+
+\end{lrmquote}
 
 The number of bits of any expression is determined by the operands and the
 context in which it occurs. Casting can be used to set the target width of an
@@ -119,7 +358,7 @@ The bit width of expressions is defined using the fundamental concepts:
 
 \begin{description}
   \item[Self-determined width]
-    We call \sds{} the bit-width that is intrinsic to an expression: i.e.~it is
+    The \sds{} is the intrinsic width of an expression: i.e.~it is
     solely based on the expression's internal structure and operands.
 
   \item[Resizing]
@@ -127,10 +366,10 @@ The bit width of expressions is defined using the fundamental concepts:
     operation may change the width of the internal expression.
 \end{description}
 
-\section{Example of expression bit-length problem}%
-
-\emph{Original sub-section of the LRM}
-\textelp{}
+\begin{lrmquote}{11.6.2}{300}
+  \section{Example of expression bit-length problem}
+  \textelp{}
+\end{lrmquote}
 
 \section{Expression categories for resizing}%
 
@@ -386,12 +625,38 @@ replication amount.
   \sds{} of $t$.
 \end{typingrule}
 
-\begin{center}
-  \noindent\rule{.8\textwidth}{1pt}
-\end{center}
+\begin{lrmquote}{11.6.3}{301}
 
-\section{Examples of bit-widths determination}
-\label{examples}
+  \section{Example of self-determined expressions}
+  \label{examples}
+
+  {
+    \color{red}
+    \begin{verbatim}
+logic [3:0] a;
+logic [5:0] b;
+logic [15:0] c;
+initial begin
+   a = 4'hF;
+   b = 6'hA;
+   $display("a*b=%h", a*b);   // expression size is self-determined
+   c = {a**b};                // expression a**b is self-determined
+                              // due to concatenation operator {}
+   $display("a**b=%h", c);
+   c = a**b;                  // expression size is determined by c
+   $display("c=%h", c);
+end
+\end{verbatim}
+
+    Simulator output for this example:
+    \begin{verbatim}
+a*b=16   // 'h96 was truncated to 'h16 since expression size is 6
+a**b=1   // expression size is 4 bits (size of a)
+c=ac61   // expression size is 16 bits (size of c)
+\end{verbatim}
+
+  }
+\end{lrmquote}
 
 This section illustrates the application of sizing and type-derivation
 rules as defined in this specification. The examples are derived from
@@ -640,9 +905,75 @@ resulting \sds{} is 64. By rule \textbf{Assignment-Left-Width}:
     \end{itemize}
 \end{itemize}
 
-\begin{center}
-  \noindent\rule{.8\textwidth}{1pt}
-\end{center}
+\renewcommand{\thesection}{11.\arabic{section}}
+\setcounter{section}{6}
+
+\begin{lrmquote}{11.7}{301}
+  \section{Signed expressions}
+  \textelp{}
+\end{lrmquote}
+
+\renewcommand{\thesection}{11.8.\arabic{section}}
+\setcounter{section}{1}
+
+\begin{lrmquote}{11.8.2}{302}
+  {
+    \color{red}
+
+    \section{Steps for evaluating an expression}
+
+    The following are the steps for evaluating an expression:
+    \begin{itemize}
+      \item Determine the expression size based upon the standard rules of
+        expression size determination (see 11.6).
+      \item Determine the sign of the expression using the rules outlined in
+        11.8.1.
+      \item Propagate the type and size of the expression (or self-determined
+        subexpression) back down to the context-determined operands of the
+        expression. In general, any context-determined operand of an operator
+        shall be the same type and size as the result of the operator.
+        However, there are two exceptions:
+        \begin{itemize}
+          \item If the result type of the operator is real and if it has a
+            context-determined operand that is not real, that operand
+            shall be treated as if it were self-determined and then
+            converted to real just before the operator is applied.
+          \item The relational and equality operators have operands that are
+            neither fully self-determined nor fully context-determined. The
+            operands shall affect each other as if they were context-determined
+            operands with a result type and size (maximum of the two operand
+            sizes) determined from them. However, the actual result type shall
+            always be 1 bit unsigned. The type and size of the operand shall be
+            independent of the rest of the expression and vice versa.
+        \end{itemize}
+      \item When propagation reaches a simple operand as defined in 11.5, then
+        that operand shall be converted to the propagated type and size. If the
+        operand shall be extended, then it shall be sign-extended only if the
+        propagated type is signed.
+    \end{itemize}
+  }
+\end{lrmquote}
+\begin{lrmquote}{11.8.3}{303}
+  {
+    \color{red}
+
+    \section{Steps for evaluating an assignment}
+
+    The following are the steps for evaluating an assignment:
+    \begin{itemize}
+      \item Determine the size of the right-hand side by the standard assignment
+        size determination rules (see 11.6).
+      \item If needed, extend the size of the right-hand side, performing sign
+        extension if, and only if, the type of the right-hand side is signed.
+    \end{itemize}
+  }
+\end{lrmquote}
+\begin{lrmquote}{11.8.4}{303}
+  \section{Handling x and z in signed expressions}
+
+  \textelp{}
+\end{lrmquote}
+
 
 \appendix
 \section{Technical Appendix: Algorithm Overview}
@@ -828,5 +1159,8 @@ follows the typing rules explained in the previous
     }
   }
 \end{algorithm}
+
+\bibliographystyle{splncs04}
+\bibliography{refs}
 
 \end{document}
