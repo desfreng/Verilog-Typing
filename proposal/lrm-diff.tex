@@ -33,15 +33,19 @@
 \newcommand{\redOp}{\texttt{\&} \texttt{\tild\&} \texttt{|} \texttt{\tild|}
 \texttt{\^{}} \texttt{\tild\^{}} \texttt{\^{}\tild} \texttt{!}}
 
-\begin{document}
+\title{Highlighted LRM Sections for Revision}
+\author{Authors}
+\date{}
 
-\section*{Notes}
+\begin{document}
+\maketitle
 
 The following content consists of extracts taken directly from the latest
 version of the official Language Reference Manual (LRM) of SystemVerilog
 (IEEE 1800-2023). The sections containing text highlighted in
 \textcolor{red}{red} represent the specific content we believe could be replaced
-with our proposal.
+with our proposal, presented in the document
+``Proposal for Improving Expression Size Determination in IEEE 1800 SystemVerilog''.
 
 For clarity, the original LRM page number corresponding to the beginning of each
 extracted section is included in that section's title (this page marker is
@@ -51,7 +55,10 @@ editorial and is not part of the original LRM text).
 \noindent\rule{.8\textwidth}{1pt}  
 \end{center}
 
-\section*{11.4.4 Relational operators (p. 278)}
+\renewcommand{\thesection}{11.4.\arabic{section}}
+\setcounter{section}{3}
+
+\section{Relational operators (p. 278)}
 
 \textelp{}
 
@@ -78,7 +85,7 @@ between real values.
 
 \textelp{}
 
-\section*{11.4.5 Equality operators (p. 279)}
+\section{Equality operators (p. 279)}
 
 \textelp{}
 
@@ -106,7 +113,9 @@ comparison between real values.
 
 \textelp{}
 
-\section*{11.4.8 Bitwise operators (p. 281)}
+\setcounter{section}{7}
+
+\section{Bitwise operators (p. 281)}
 
 \textelp{}
 
@@ -131,7 +140,10 @@ is unsigned. If the operand is signed, the result is signed.
 
 \textelp{}
 
-\section*{11.6.1 Rules for expression bit lengths (p. 299)}
+\renewcommand{\thesection}{11.6.\arabic{section}}
+\setcounter{section}{0}
+
+\section{Rules for expression bit lengths (p. 299)}
 
   {
     \color{red}
@@ -239,14 +251,14 @@ is unsigned. If the operand is signed, the result is signed.
     the result to something wide enough to hold it.
   }
 
-\section*{11.6.2 Example of expression bit-length problem (p. 300)}
+\section{Example of expression bit-length problem (p. 300)}
 
 \textelp{}
 
 {
   \color{red}
 
-  \section*{11.6.3 Example of self-determined expressions (p. 301)}
+  \section{Example of self-determined expressions (p. 301)}
 
   \begin{verbatim}
 logic [3:0] a;
@@ -273,11 +285,17 @@ c=ac61   // expression size is 16 bits (size of c)
 
 }
 
-\section*{11.7 Signed expressions (p. 301)}
+\renewcommand{\thesection}{11.\arabic{section}}
+\setcounter{section}{6}
+
+\section{Signed expressions (p. 301)}
 
 \textelp{}
 
-\section*{11.8.2 Steps for evaluating an expression (p. 302)}
+\renewcommand{\thesection}{11.8.\arabic{section}}
+\setcounter{section}{1}
+
+\section{Steps for evaluating an expression (p. 302)}
 
   {
     \color{red}
@@ -312,7 +330,7 @@ c=ac61   // expression size is 16 bits (size of c)
         propagated type is signed.
     \end{itemize}
 
-    \section*{11.8.3 Steps for evaluating an assignment (p. 303)}
+    \section{Steps for evaluating an assignment (p. 303)}
 
     The following are the steps for evaluating an assignment:
     \begin{itemize}
@@ -323,7 +341,7 @@ c=ac61   // expression size is 16 bits (size of c)
     \end{itemize}
   }
 
-\section*{11.8.4 Handling x and z in signed expressions (p. 303)}
+\section{Handling x and z in signed expressions (p. 303)}
 
 \textelp{}
 

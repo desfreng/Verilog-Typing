@@ -14,10 +14,13 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{mathabx}
+\usepackage{cleveref}
+
 \usepackage{xcolor}
 
 \usepackage{minted}
 \usepackage[boxruled]{algorithm2e}
+\usepackage{csquotes}
 
 \setminted{
   frame=lines,
@@ -56,7 +59,50 @@
 \newcommand{\redOp}{\texttt{\&}, \texttt{\tild\&}, \texttt{|}, \texttt{\tild|},
 \texttt{\^{}}, \texttt{\tild\^{}}, \texttt{\^{}\tild}, \texttt{!}}
 
+\title{Proposal for Improving Expression Size Determination in IEEE 1800
+SystemVerilog}
+\author{Authors}
+\date{}
+
 \begin{document}
+\maketitle
+
+This document contains a proposal for inclusion in the current SystemVerilog
+Language Reference Manual (LRM), IEEE 1800-2023, to clarify and formalize the
+rules for determining expression bit-widths. It is designed to replace the
+content highlighted in the document ``Highlighted LRM Sections for Revision.''
+
+\begin{description}
+  \item[\Crefrange{expression-bit-widths}{self-determined} (Expression bit-widths):]
+    This material is proposed as replacement for the sub-sections in 11.6 of the
+    current LRM. It introduces a revised formalization for bit-width
+    determination, complete with rules governing this process, applicable to
+    all SystemVerilog expressions. This content is a draft intended to
+    replace existing content within the designated LRM section.
+
+  \item[\Cref{examples} (Examples of bit-widths determination):]
+    This section provides examples demonstrating the use of the bit-width
+    determination rules defined in the preceding section. This content is
+    proposed to extend the existing Section 11.6.3 of the LRM. The current
+    version of the LRM offers a limited number of examples, primarily
+    focusing on self-determined expressions. This draft proposes an update
+    for this section, with the new bit-width determination mechanism and
+    extensive examples for all kinds of SystemVerilog expressions.
+
+  \item[\Cref{algorithm-overview} (Algorithmic Overview):]
+    This content is proposed as a technical Appendix to the LRM. It formally
+    describes the algorithms used to compute SystemVerilog expression
+    bit-widths, which are only implicitly described in the current LRM
+    version. This section also includes implementation considerations
+    related to the efficient execution of the algorithms.
+\end{description}
+
+\begin{center}
+  \noindent\rule{.8\textwidth}{1pt}
+\end{center}
+
+\renewcommand{\thesection}{11.6.\arabic{section}}
+\setcounter{section}{0}
 
 \section{Expression bit-widths}%
 \label{expression-bit-widths}
@@ -68,8 +114,6 @@ intermediate value (see 6.24).
 Controlling the number of bits that are used in expression evaluations is
 important if consistent results are to be achieved. The following typing system
 provides precise rules for determining expression bit widths in all situations.
-
-\subsection{Bidirectional typing operations}%
 
 The bit width of expressions is defined using the fundamental concepts:
 
@@ -83,12 +127,17 @@ The bit width of expressions is defined using the fundamental concepts:
     operation may change the width of the internal expression.
 \end{description}
 
-\subsection{Expression categories for resizing}%
+\section{Example of expression bit-length problem}%
+
+\emph{Original sub-section of the LRM}
+\textelp{}
+
+\section{Expression categories for resizing}%
 
 SystemVerilog expressions shall be categorized into two types based on their
 resizing behavior:
 
-\subsubsection{Atomically resizable expressions}%
+\subsection{Atomically resizable expressions}%
 
 Atomically resizable expressions \mbr{} without affecting their
 internal operand width. The following expressions are atomically resizable:
@@ -114,7 +163,7 @@ shall remain unmodified.
   and $e$ is atomically resizable, then $e$ \mbr{} to $n$.
 \end{typingrule}
 
-\subsubsection{Non-atomically resizable expressions}%
+\subsection{Non-atomically resizable expressions}%
 
 Non-atomically resizable expressions propagate resizing to their operands when
 a target width is specified. These expressions require their operands to be
@@ -159,12 +208,13 @@ while the condition remains \emph{self-determined}:
   \mbr{} to $n$, then $c~\texttt{?}~t_{e}~\texttt{:}~f_{e}$ \mbr{} to $n$.
 \end{typingrule}
 
-\subsection{\emph{Self-determined} expression sizing rules}%
+\section{\emph{Self-determined} expression sizing rules}%
+\label{self-determined}
 
 The \sds{} of an expression, solely based on its internal
 structure and operands, shall be computed according to the following rules:
 
-\subsubsection{Operands}%
+\subsection{Operands}%
 
 For operands as defined in 11.2, the \sds{} is always
 well-defined and determined by their declaration, literal specification, or
@@ -197,7 +247,7 @@ Examples:
     \sds{}.
 \end{itemize}
 
-\subsubsection{Binary arithmetic and bitwise expressions}%
+\subsection{Binary arithmetic and bitwise expressions}%
 
 For binary arithmetic and bitwise expressions, the \sds{}
 is the maximum of the operand widths. The smaller operand is \emph{resized}
@@ -213,7 +263,7 @@ to match the larger operand's widths.
   to $t$, then $a \oplus b$ shall have a \sds{} of $t$.
 \end{typingrule}
 
-\subsubsection{Unary expressions}%
+\subsection{Unary expressions}%
 
 For unary expressions (Unary arithmetic, unary bitwise negation and unary
 increment and decrement), the \sds{} is identical to the
@@ -224,7 +274,7 @@ operand width.
   a \sds{} of $t$.
 \end{typingrule}
 
-\subsubsection{Relational and equality expressions}%
+\subsection{Relational and equality expressions}%
 
 For relational and equality expressions, the \sds{} is
 always 1 bit. The smaller operand shall be resized to match the larger operand's
@@ -240,7 +290,7 @@ width for comparison purposes.
   to $t$, then $a \oplus b$ shall have a \sds{} of $1$.
 \end{typingrule}
 
-\subsubsection{Logical expressions}%
+\subsection{Logical expressions}%
 
 For binary logical expressions, the \sds{} is always 1 bit.
 All operands are \emph{self-determined}.
@@ -251,7 +301,7 @@ All operands are \emph{self-determined}.
   \sds{} of 1.
 \end{typingrule}
 
-\subsubsection{Reduction expressions}%
+\subsection{Reduction expressions}%
 
 For reduction expressions, including \texttt{!}, the \sds{}
 is always 1 bit. The operand is \emph{self-determined}.
@@ -261,7 +311,7 @@ is always 1 bit. The operand is \emph{self-determined}.
   \sds{} of 1.
 \end{typingrule}
 
-\subsubsection{Shift and power expressions}%
+\subsection{Shift and power expressions}%
 
 For shift and power expressions, the \sds{} is determined
 by the left operand. The right operand shall be \emph{self-determined}.
@@ -272,7 +322,7 @@ by the left operand. The right operand shall be \emph{self-determined}.
   \sds{} of $t$.
 \end{typingrule}
 
-\subsubsection{Assignment expressions}%
+\subsection{Assignment expressions}%
 
 For assignment expressions, the \sds{} is determined by the
 left-hand side. When the left-hand side has a larger width than the right-hand
@@ -290,7 +340,7 @@ side shall be \emph{self-determined}.
   $l \oplus e$ shall have a \sds{} of $t$.
 \end{typingrule}
 
-\subsubsection{Conditional expressions}%
+\subsection{Conditional expressions}%
 
 For conditional expressions using the \texttt{?:} operator, the
 \sds{} is the maximum width of the two branch expressions.
@@ -311,7 +361,7 @@ shall be \emph{self-determined}.
   $t$.
 \end{typingrule}
 
-\subsubsection{Concatenation expressions}%
+\subsection{Concatenation expressions}%
 
 For concatenation expressions, the \sds{} is the sum of the
 \emph{self-determined widths} of all operands.
@@ -323,7 +373,7 @@ For concatenation expressions, the \sds{} is the sum of the
   a \sds{} of $t$.
 \end{typingrule}
 
-\subsubsection{Replication expressions}%
+\subsection{Replication expressions}%
 
 The \sds{} of a replication is the
 \sds{} of the inner concatenation multiplied by the
@@ -336,249 +386,267 @@ replication amount.
   \sds{} of $t$.
 \end{typingrule}
 
-\section{Examples}
+\begin{center}
+  \noindent\rule{.8\textwidth}{1pt}
+\end{center}
 
-Consider the following SystemVerilog declarations:
+\section{Examples of bit-widths determination}
+\label{examples}
+
+This section illustrates the application of sizing and type-derivation
+rules as defined in this specification. The examples are derived from
+the following declarations:
 
 \begin{minted}{verilog}
-logic [7:0] var8;      // 8-bit variable
+logic [7:0]  var8;     // 8-bit variable
 logic [31:0] var32;    // 32-bit variable
 logic [15:0] var16;    // 16-bit variable
-logic cond;            // condition signal
+logic        cond;     // condition signal
 logic [63:0] result;   // 64-bit result variable
 \end{minted}
 
 \subsection{Basic Expression Sizing}
 
-In the previous context, the expression \sv{var8} has
-\sds{} 8. Indeed, by rule \textbf{Operand-Width}:
+This subsection demonstrates basic operand and binary expression
+sizing behavior.
+
+Given the above declarations, the expression \sv{var8} has \sds{} 8.
+By application of rule \textbf{Operand-Width}:
 \begin{itemize}
-  \item \sv{var8} is an operand with width 8 (by declaration
-    \sv{logic [7:0] var8})
+  \item \sv{var8} is an operand with width 8, as declared
+    in \sv{logic [7:0] var8}.
 \end{itemize}
 
-In the previous context, the expression \sv{var16[15:8] + 4'b1001} has
-\sds{} 8. Indeed, by rule \textbf{Binary-Left-Width}:
-
+The expression \sv{var16[15:8] + 4'b1001} has \sds{} 8.
+By application of rule \textbf{Binary-Left-Width}:
 \begin{itemize}
-  \item \sv{var16[15:8]} has \sds{} 8 (by rule
-    \textbf{Operand-Width}, part-select of 8 bits)
+  \item \sv{var16[15:8]} has \sds{} 8 (by
+    \textbf{Operand-Width}, part-select of 8 bits).
   \item \sv{4'b1001} \mbr{} to 8 by rule \textbf{Resize}:
     \begin{itemize}
-      \item \sv{4'b1001} has \sds{} 4 (by rule
-        \textbf{Operand-Width}, sized integer literal)
-      \item 8 is larger than 4
-      \item \sv{4'b1001} is atomically resizable (operands are
-        atomically resizable)
+      \item \sv{4'b1001} has \sds{} 4 (by
+        \textbf{Operand-Width}, sized literal).
+      \item 8 is greater than 4.
+      \item \sv{4'b1001} is atomically resizable.
     \end{itemize}
 \end{itemize}
 
-If we tried to apply rule \textbf{Binary-Right-Width} on the previous expression
-we would end up stuck resizing \sv{var16[15:8]} to 4 bits.
+Application of rule \textbf{Binary-Right-Width} to this expression
+would not succeed, as it would require resizing \sv{var16[15:8]} to
+4 bits.
 
-In the previous context, the expression \sv{var16[5] + 8'hFF} has
-\sds{} 8. Indeed, by rule \textbf{Binary-Right-Width}:
-
+The expression \sv{var16[5] + 8'hFF} has \sds{} 8. By rule
+\textbf{Binary-Right-Width}:
 \begin{itemize}
-  \item \sv{8'hFF} has \sds{} 8 (by rule
-    \textbf{Operand-Width}, sized integer literal)
+  \item \sv{8'hFF} has \sds{} 8 (by \textbf{Operand-Width},
+    sized literal).
   \item \sv{var16[5]} \mbr{} to 8 by rule \textbf{Resize}:
     \begin{itemize}
-      \item \sv{var16[5]} has \sds{} 1 (by rule
-        \textbf{Operand-Width}, bit-select)
-      \item 8 is larger than 1
-      \item \sv{var16[5]} is atomically resizable (operands are
-        atomically resizable)
+      \item \sv{var16[5]} has \sds{} 1 (by
+        \textbf{Operand-Width}, bit-select).
+      \item 8 is greater than 1.
+      \item \sv{var16[5]} is atomically resizable.
     \end{itemize}
 \end{itemize}
 
 \subsection{Relational Expression Example}
 
-In the previous context, the expression \sv{var16 > 16'd100} has
-\sds{} 1. Indeed, by rule \textbf{Relational-Left-Width}:
+This subsection illustrates the determination of sizing for relational
+expressions.
 
+For the expression \sv{var16 > 16'd100}, the resulting \sds{} is 1.
+By rule \textbf{Relational-Left-Width}:
 \begin{itemize}
-  \item \sv{var16} has \sds{} 16 (by rule
-    \textbf{Operand-Width}, declaration \sv{logic [15:0] var16})
-  \item \sv{16'd100} \mbr{} to 16 --- this is actually not
-    needed as it already has width 16:
+  \item \sv{var16} has \sds{} 16 (by \textbf{Operand-Width},
+    declaration \sv{logic [15:0] var16}).
+  \item \sv{16'd100} \mbr{} to 16 (already 16 bits):
     \begin{itemize}
-      \item \sv{16'd100} has \sds{} 16 (by rule
-        \textbf{Operand-Width}, sized integer literal)
+      \item \sv{16'd100} has \sds{} 16 (by
+        \textbf{Operand-Width}, sized literal).
     \end{itemize}
 \end{itemize}
 
 \subsection{Reduction Expression Example}
 
-In the previous context, the expression \sv{&var16[7:0]} has
-\sds{} 1. Indeed, by rule \textbf{Reduction-Width}:
+This subsection demonstrates sizing for reduction operations.
 
+For the expression \sv{&var16[7:0]}, the resulting \sds{} is 1.
+By rule \textbf{Reduction-Width}:
 \begin{itemize}
-  \item \sv{var16[7:0]} has \sds{} 8 (by rule
-    \textbf{Operand-Width}, part-select of 8 bits)
+  \item \sv{var16[7:0]} has \sds{} 8 (by
+    \textbf{Operand-Width}, part-select of 8 bits).
 \end{itemize}
 
 \subsection{Replication Expression Example}
 
-In the previous context, the expression \sv{{4{var8}}} has
-\sds{} 32. Indeed, by rule \textbf{Replication-Width}:
+This subsection illustrates the effect of replication on expression
+width.
 
+For the expression \sv{{4{var8}}}, the resulting \sds{} is 32.
+By rule \textbf{Replication-Width}:
 \begin{itemize}
-  \item The replication amount $i$ is 4
-  \item \sv{var8} has \sds{} 8 (by rule
-    \textbf{Operand-Width}, declaration \sv{logic [7:0] var8})
-  \item The result width is $4 \times 8 = 32$
+  \item The replication count $i$ is 4.
+  \item \sv{var8} has \sds{} 8 (by \textbf{Operand-Width},
+    declaration \sv{logic [7:0] var8}).
+  \item The resulting width is $4 \times 8 = 32$.
 \end{itemize}
 
 \subsection{Complex Replication with Concatenation}
 
-In the previous context, the expression \sv{{2{var16[7:0], 4'hF}}} has \sds{}
-24. With rule \textbf{Replication-Width}:
+This subsection shows replication applied to a concatenated operand.
 
+For the expression \sv{{2{var16[7:0], 4'hF}}}, the resulting
+\sds{} is 24. By rule \textbf{Replication-Width}:
 \begin{itemize}
-  \item The replication amount $i$ is 2
+  \item The replication count $i$ is 2.
   \item The inner concatenation \sv{{var16[7:0], 4'hF}} has
     \sds{} 12 by rule \textbf{Concatenation-Width}:
     \begin{itemize}
-      \item \sv{var16[7:0]} has \sds{} 8 (by rule
-        \textbf{Operand-Width}, part-select)
-      \item \sv{4'hF} has \sds{} 4 (by rule
-        \textbf{Operand-Width}, sized literal)
-      \item Sum is $8 + 4 = 12$
+      \item \sv{var16[7:0]} has \sds{} 8 (by
+        \textbf{Operand-Width}, part-select).
+      \item \sv{4'hF} has \sds{} 4 (by
+        \textbf{Operand-Width}, sized literal).
+      \item Sum is $8 + 4 = 12$.
     \end{itemize}
-  \item The result width is $2 \times 12 = 24$
+  \item The resulting width is $2 \times 12 = 24$.
 \end{itemize}
 
 \subsection{Assignment with Target Width Extension}
 
-In the previous context, the expression \sv{var32 = var16[7:0] + 1} has
-\sds{} 32. With rule \textbf{Assignment-Left-Width}:
+This subsection illustrates extension of a right-hand operand to
+match the assignment target.
 
+For the expression \sv{var32 = var16[7:0] + 1}, the resulting
+\sds{} is 32. By rule \textbf{Assignment-Left-Width}:
 \begin{itemize}
-  \item Left-hand side \sv{var32} has width 32 (by declaration
-    \sv{logic [31:0] var32})
-  \item Right-hand side \sv{var16[7:0] + 1} \mbr{} to 32 by
-    rule \textbf{Binary-Resize}:
+  \item Left-hand side \sv{var32} has width 32
+    (by declaration \sv{logic [31:0] var32}).
+  \item Right-hand side \sv{var16[7:0] + 1} \mbr{} to 32
+    by rule \textbf{Binary-Resize}:
     \begin{itemize}
-      \item \sv{var16[7:0]} \mbr{} to 32 by rule
-        \textbf{Resize}:
+      \item \sv{var16[7:0]} \mbr{} to 32 by rule \textbf{Resize}:
         \begin{itemize}
-          \item \sv{var16[7:0]} has \sds{} 8
-            (by rule \textbf{Operand-Width}, part-select)
-          \item 32 is larger than 8
-          \item \sv{var16[7:0]} is atomically resizable
-            (operands are atomically resizable)
+          \item \sv{var16[7:0]} has \sds{} 8 (by
+            \textbf{Operand-Width}, part-select).
+          \item 32 is greater than 8.
+          \item \sv{var16[7:0]} is atomically resizable.
         \end{itemize}
       \item \sv{1} \mbr{} to 32 (unsized literals have
-        \sds{} at least 32)
+        at least 32 bits).
     \end{itemize}
 \end{itemize}
 
 \subsection{Assignment with Result Truncation}
 
-In the previous context, the expression \sv{var8 = var32 + var16} has
-\sds{} 8. Indeed, according to the rule \textbf{Assignment-Right-Width}:
+This subsection shows truncation of the right-hand result to match
+the left-hand target width.
 
+For the expression \sv{var8 = var32 + var16}, the resulting
+\sds{} is 8. By rule \textbf{Assignment-Right-Width}:
 \begin{itemize}
-  \item Left-hand side \sv{var8} has width 8 (by declaration
-    \sv{logic [7:0] var8})
-  \item Right-hand side \sv{var32 + var16} has \sds{}
-    32 by rule \textbf{Binary-Left-Width}:
+  \item Left-hand side \sv{var8} has width 8 (by
+    declaration \sv{logic [7:0] var8}).
+  \item Right-hand side \sv{var32 + var16} has \sds{} 32
+    (by \textbf{Binary-Left-Width}):
     \begin{itemize}
-      \item \sv{var32} has \sds{} 32 (by rule
-        \textbf{Operand-Width}, declaration \sv{logic [31:0] var32})
-      \item \sv{var16} \mbr{} to 32 by rule
-        \textbf{Resize}:
+      \item \sv{var32} has \sds{} 32 (by
+        \textbf{Operand-Width}, declaration
+        \sv{logic [31:0] var32}).
+      \item \sv{var16} \mbr{} to 32 by rule \textbf{Resize}:
         \begin{itemize}
-          \item \sv{var16} has \sds{} 16 (by rule
-            \textbf{Operand-Width}, declaration \sv{logic [15:0] var16})
-          \item 32 is larger than 16
-          \item \sv{var16} is atomically resizable (operands are atomically
-            resizable)
+          \item \sv{var16} has \sds{} 16 (by
+            \textbf{Operand-Width}, declaration
+            \sv{logic [15:0] var16}).
+          \item 32 is greater than 16.
+          \item \sv{var16} is atomically resizable.
         \end{itemize}
     \end{itemize}
-  \item 8 is smaller than 32
+  \item 8 is smaller than 32.
 \end{itemize}
 
 \subsection{Conditional Expression with True Branch Determining Size}
 
-In the previous context, the expression \sv{cond ? var32 : var8} has
-\sds{} 32. Indeed, according to the rule \textbf{Conditional-Left-Width}:
+This subsection demonstrates conditional sizing where the true
+branch determines the resulting width.
 
+For the expression \sv{cond ? var32 : var8}, the resulting \sds{} is
+32. By rule \textbf{Conditional-Left-Width}:
 \begin{itemize}
-  \item Condition \sv{cond} has \sds{} 1 (by rule
-    \textbf{Operand-Width}, declaration \sv{logic cond})
-  \item True branch \sv{var32} has \sds{} 32 (by rule
-    \textbf{Operand-Width}, declaration \sv{logic [31:0] var32})
-  \item False branch \sv{var8} \mbr{} to 32 by rule
-    \textbf{Resize}:
+  \item Condition \sv{cond} has \sds{} 1 (by
+    \textbf{Operand-Width}, declaration \sv{logic cond}).
+  \item True branch \sv{var32} has \sds{} 32 (by
+    \textbf{Operand-Width}, declaration \sv{logic [31:0] var32}).
+  \item False branch \sv{var8} \mbr{} to 32 by rule \textbf{Resize}:
     \begin{itemize}
-      \item \sv{var8} has \sds{} 8 (by rule
-        \textbf{Operand-Width}, declaration \sv{logic [7:0] var8})
-      \item 32 is larger than 8
-      \item \sv{var8} is atomically resizable (operands are atomically
-        resizable)
+      \item \sv{var8} has \sds{} 8 (by
+        \textbf{Operand-Width}, declaration \sv{logic [7:0] var8}).
+      \item 32 is greater than 8.
+      \item \sv{var8} is atomically resizable.
     \end{itemize}
 \end{itemize}
 
 \subsection{Conditional Expression with False Branch Determining Size}
 
-In the previous context, the expression \sv{cond ? var8 : var32} has
-\sds{} 32. Indeed, according to the rule \textbf{Conditional-Right-Width}:
+This subsection demonstrates conditional sizing where the false
+branch determines the resulting width.
 
+For the expression \sv{cond ? var8 : var32}, the resulting \sds{} is
+32. By rule \textbf{Conditional-Right-Width}:
 \begin{itemize}
-  \item Condition \sv{cond} has \sds{} 1 (by rule
-    \textbf{Operand-Width}, declaration \sv{logic cond})
-  \item False branch \sv{var32} has \sds{} 32 (by rule
-    \textbf{Operand-Width}, declaration \sv{logic [31:0] var32})
-  \item True branch \sv{var8} \mbr{} to 32 by rule
-    \textbf{Resize}:
+  \item Condition \sv{cond} has \sds{} 1 (by
+    \textbf{Operand-Width}, declaration \sv{logic cond}).
+  \item False branch \sv{var32} has \sds{} 32 (by
+    \textbf{Operand-Width}, declaration \sv{logic [31:0] var32}).
+  \item True branch \sv{var8} \mbr{} to 32 by rule \textbf{Resize}:
     \begin{itemize}
-      \item \sv{var8} has \sds{} 8 (by rule
-        \textbf{Operand-Width}, declaration \sv{logic [7:0] var8})
-      \item 32 is larger than 8
-      \item \sv{var8} is atomically resizable (operands are atomically
-        resizable)
+      \item \sv{var8} has \sds{} 8 (by
+        \textbf{Operand-Width}, declaration \sv{logic [7:0] var8}).
+      \item 32 is greater than 8.
+      \item \sv{var8} is atomically resizable.
     \end{itemize}
 \end{itemize}
 
 \subsection{Conditional Expression with Context-Driven Sizing}
 
-In the previous context, the expression
-\sv{result = cond ? var32[7:0] : var32[15:8]} has \sds{}
-64. Indeed, by rule \textbf{Assignment-Left-Width}:
+This subsection demonstrates conditional sizing determined by the
+context of an assignment target.
 
+For the expression \sv{result = cond ? var32[7:0] : var32[15:8]}, the
+resulting \sds{} is 64. By rule \textbf{Assignment-Left-Width}:
 \begin{itemize}
-  \item Left-hand side \sv{result} has width 64 (by declaration
-    \sv{logic [63:0] result})
+  \item Left-hand side \sv{result} has width 64 (by
+    declaration \sv{logic [63:0] result}).
   \item Right-hand side \sv{cond ? var32[7:0] : var32[15:8]}
     \mbr{} to 64 by rule \textbf{Conditional-Resize}:
     \begin{itemize}
-      \item Condition \sv{cond} has \sds{} 1 (by rule
-        \textbf{Operand-Width}, declaration \sv{logic cond})
-      \item True branch \sv{var32[7:0]} \mbr{} to 64 by rule
+      \item Condition \sv{cond} has \sds{} 1 (by
+        \textbf{Operand-Width}, declaration \sv{logic cond}).
+      \item True branch \sv{var32[7:0]} \mbr{} to 64 by
         \textbf{Resize}:
         \begin{itemize}
-          \item \sv{var32[7:0]} has \sds{} 8 (by rule
-            \textbf{Operand-Width}, part-select)
-          \item 64 is larger than 8
-          \item \sv{var32[7:0]} is atomically resizable (operands are
-            atomically resizable)
+          \item \sv{var32[7:0]} has \sds{} 8 (by
+            \textbf{Operand-Width}, part-select).
+          \item 64 is greater than 8.
+          \item \sv{var32[7:0]} is atomically resizable.
         \end{itemize}
       \item False branch \sv{var32[15:8]} \mbr{} to 64 by
-        rule \textbf{Resize}:
+        \textbf{Resize}:
         \begin{itemize}
-          \item \sv{var32[15:8]} has \sds{} 8 (by rule
-            \textbf{Operand-Width}, part-select)
-          \item 64 is larger than 8
-          \item \sv{var32[15:8]} is atomically resizable (operands are
-            atomically resizable)
+          \item \sv{var32[15:8]} has \sds{} 8 (by
+            \textbf{Operand-Width}, part-select).
+          \item 64 is greater than 8.
+          \item \sv{var32[15:8]} is atomically resizable.
         \end{itemize}
     \end{itemize}
 \end{itemize}
 
+\begin{center}
+  \noindent\rule{.8\textwidth}{1pt}
+\end{center}
+
 \appendix
-\section{Algorithm Overview}
+\section{Technical Appendix: Algorithm Overview}
+\label{algorithm-overview}
 
 This appendix presents an algorithm to compute the width of all sub-expressions
 of a SystemVerilog expression. The algorithm operates in two phases:
