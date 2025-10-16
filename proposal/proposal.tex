@@ -62,7 +62,13 @@
   numbersep=5pt
 }
 
-\newcommand{\sv}[1]{\mintinline{verilog}{#1}}
+\definecolor{darkred}{RGB}{175, 0, 0}
+\definecolor{darkgreen}{RGB}{20, 100, 20}
+
+\newcommand{\del}{\color{darkred}}
+\newcommand{\add}{\color{darkgreen}}
+
+\newcommand{\sv}[1]{{\color{black}\mintinline{verilog}{#1}}}
 
 \newcommand{\com}[1]{\textcolor{darkgray}{\tcp*[f]{#1}}}
 \newcommand{\kw}[1]{\textnormal{\texttt{#1}}}
@@ -87,9 +93,9 @@
 \texttt{\&}, \texttt{|}, \texttt{\^{}}, \texttt{\^{}\tild},
 \texttt{\tild\^{}}}
 \newcommand{\unOp}{\texttt{+}, \texttt{-}, \texttt{\tild}, \texttt{++},
-  \texttt{--}}
-\newcommand{\shiftOp}{\texttt{>>}, \texttt{<}\texttt{<}, \texttt{**},
-  \texttt{>>>}, \texttt{<}\texttt{<}\texttt{<}}
+  \texttt{-{}-}}
+\newcommand{\shiftOp}{\texttt{>{}>}, \texttt{<}\texttt{<}, \texttt{**},
+  \texttt{>{}>{}>}, \texttt{<}\texttt{<}\texttt{<}}
 \newcommand{\compOp}{\texttt{===}, \texttt{!==}, \texttt{==?}, \texttt{!=?},
   \texttt{==}, \texttt{!=}, \texttt{>}, \texttt{>=}, \texttt{<}, \texttt{<=}}
 \newcommand{\logicOp}{\texttt{\&\&}, \texttt{||}, \texttt{->}, \texttt{<->}}
@@ -110,8 +116,8 @@ rules for determining expression bit-widths.
 
 Paragraphs with a gray border on the left are extracts taken directly from the
 latest version of the LRM. The sections containing text highlighted in
-\textcolor{red}{red} represent the specific content we believe could be replaced
-with our proposal. Our propositions are organized as follows:
+  {\del{}red} represent the specific content we believe could be replaced
+with our proposal. Our propositions, in {\add green}, are organized as follows:
 
 \begin{description}
   \item[\Crefrange{expression-bit-widths}{self-determined} (Expression bit-widths):]
@@ -150,7 +156,7 @@ with our proposal. Our propositions are organized as follows:
   When one or both operands of a relational expression are unsigned, the
   expression shall be interpreted as a comparison between unsigned values.
     {
-      \color{red}
+      \del
       If the operands are of unequal bit lengths, the smaller operand
       shall be zero-extended to the size of the larger operand.
     }
@@ -158,7 +164,7 @@ with our proposal. Our propositions are organized as follows:
   When both operands are signed, the expression shall be interpreted as a
   comparison between signed values.
     {
-      \color{red}
+      \del{}
       If the operands are of unequal bit
       lengths, the smaller operand shall be sign-extended to the size of the larger
       operand. See 11.8.2 for more information.
@@ -179,7 +185,7 @@ with our proposal. Our propositions are organized as follows:
   When one or both operands are unsigned, the expression shall be interpreted as a
   comparison between unsigned values.
     {
-      \color{red}
+      \del{}
       If the operands are of unequal bit
       lengths, the smaller operand shall be zero-extended to the size of the larger
       operand.
@@ -188,7 +194,7 @@ with our proposal. Our propositions are organized as follows:
   When both operands are signed, the expression shall be interpreted as a
   comparison between signed values.
     {
-      \color{red}
+      \del{}
       If the operands are of unequal bit
       lengths, the smaller operand shall be sign-extended to the size of the larger
       operand. See 11.8.2 for more information.
@@ -212,14 +218,14 @@ with our proposal. Our propositions are organized as follows:
   For the binary bitwise operators, if one or both operands are unsigned, the
   result is unsigned.
     {
-      \color{red}
+      \del{}
       If the operands are of unequal bit lengths, the smaller
       operand shall be zero-extended to the size of the larger operand.
     }
 
   If both operands are signed, the result is signed.
     {
-      \color{red}
+      \del{}
       If the operands are of
       unequal bit lengths, the smaller operand shall be sign-extended to the size of
       the larger operand. See 11.8.2 for more information.
@@ -235,11 +241,11 @@ with our proposal. Our propositions are organized as follows:
 \setcounter{section}{0}
 
 \begin{lrmquote}{11.6.1}{299}
-  \section{Rules for expression bit width}
+  \section{Rules for expression bit lengths}
   \label{expression-bit-widths}
 
   {
-    \color{red}
+    \del{}
 
     The rules governing the expression bit lengths have been formulated so that most
     practical situations have a natural solution.
@@ -345,7 +351,8 @@ with our proposal. Our propositions are organized as follows:
   }
 
 \end{lrmquote}
-
+{
+\add{}
 The number of bits of any expression is determined by the operands and the
 context in which it occurs. Casting can be used to set the target width of an
 intermediate value (see 6.24).
@@ -365,12 +372,15 @@ The bit width of expressions is defined using the fundamental concepts:
     Expressions \mbr{} to bit-widths greater than or equal to their \sds{}. This
     operation may change the width of the internal expression.
 \end{description}
+}
 
 \begin{lrmquote}{11.6.2}{300}
   \section{Example of expression bit-length problem}
   \textelp{}
 \end{lrmquote}
 
+{
+\add{}
 \section{Expression categories for resizing}%
 
 SystemVerilog expressions shall be categorized into two types based on their
@@ -624,6 +634,7 @@ replication amount.
   $\verb|{| i \verb|{| e_{in}\verb|}}|$ shall have a
   \sds{} of $t$.
 \end{typingrule}
+}
 
 \begin{lrmquote}{11.6.3}{301}
 
@@ -631,7 +642,7 @@ replication amount.
   \label{examples}
 
   {
-    \color{red}
+    \del{}
     \begin{verbatim}
 logic [3:0] a;
 logic [5:0] b;
@@ -658,10 +669,13 @@ c=ac61   // expression size is 16 bits (size of c)
   }
 \end{lrmquote}
 
+{
+\add{}
 This section illustrates the application of sizing and type-derivation
 rules as defined in this specification. The examples are derived from
 the following declarations:
-
+{
+\color{black}
 \begin{minted}{verilog}
 logic [7:0]  var8;     // 8-bit variable
 logic [31:0] var32;    // 32-bit variable
@@ -669,6 +683,7 @@ logic [15:0] var16;    // 16-bit variable
 logic        cond;     // condition signal
 logic [63:0] result;   // 64-bit result variable
 \end{minted}
+}
 
 \subsection{Basic Expression Sizing}
 
@@ -904,6 +919,7 @@ resulting \sds{} is 64. By rule \textbf{Assignment-Left-Width}:
         \end{itemize}
     \end{itemize}
 \end{itemize}
+}
 
 \renewcommand{\thesection}{11.\arabic{section}}
 \setcounter{section}{6}
@@ -918,7 +934,7 @@ resulting \sds{} is 64. By rule \textbf{Assignment-Left-Width}:
 
 \begin{lrmquote}{11.8.2}{302}
   {
-    \color{red}
+    \del{}
 
     \section{Steps for evaluating an expression}
 
@@ -955,7 +971,7 @@ resulting \sds{} is 64. By rule \textbf{Assignment-Left-Width}:
 \end{lrmquote}
 \begin{lrmquote}{11.8.3}{303}
   {
-    \color{red}
+    \del{}
 
     \section{Steps for evaluating an assignment}
 
@@ -976,189 +992,195 @@ resulting \sds{} is 64. By rule \textbf{Assignment-Left-Width}:
 
 
 \appendix
-\section{Technical Appendix: Algorithm Overview}
-\label{algorithm-overview}
 
-This appendix presents an algorithm to compute the width of all sub-expressions
-of a SystemVerilog expression. The algorithm operates in two phases:
+{
 
-First, the \sds{} of the expression is computed using the algorithm
-\ref{alg:determine}. This algorithm traverses the expression
-tree bottom-up to determine the natural width of each expression based solely on
-its internal structure and operands.
+  \add{}
+  \section{Technical Appendix: Algorithm Overview}
+  \label{algorithm-overview}
 
-Second, the expression and all its sub-expressions are resized to the target
-width using the algorithm \ref{alg:propagate}. During this
-propagation phase, all self-determined sub-expressions are resized to their
-\sds{}, while the other sub-expressions inherit their width from the surrounding
-context.
+  This appendix presents an algorithm to compute the width of all sub-expressions
+  of a SystemVerilog expression. The algorithm operates in two phases:
 
-Assuming that call to the \textsc{Determine} function are cached, the algorithm
-runs in linear time with respect to the number of operations in
-the SystemVerilog expression. The reasoning implemented in this algorithm
-follows the typing rules explained in the previous
-\autoref{expression-bit-widths}.
+  First, the \sds{} of the expression is computed using the algorithm
+  \ref{alg:determine}. This algorithm traverses the expression
+  tree bottom-up to determine the natural width of each expression based solely on
+  its internal structure and operands.
 
-\newcommand\Determine[1]{\textsc{determine}(#1)}
-\newcommand\Propagate[1]{\textsc{propagate}(#1)}
+  Second, the expression and all its sub-expressions are resized to the target
+  width using the algorithm \ref{alg:propagate}. During this
+  propagation phase, all self-determined sub-expressions are resized to their
+  \sds{}, while the other sub-expressions inherit their width from the surrounding
+  context.
 
-\begin{algorithm}
-  \caption{Determine}
-  \label{alg:determine}
+  Assuming that call to the \textsc{Determine} function are cached, the algorithm
+  runs in linear time with respect to the number of operations in
+  the SystemVerilog expression. The reasoning implemented in this algorithm
+  follows the typing rules explained in the previous
+  \autoref{expression-bit-widths}.
 
-  \SetKwData{Expr}{expr}
-  \SetKwData{Lhs}{lhs}
-  \SetKwData{LhsW}{lhs\textsubscript{w}}
-  \SetKwData{Rhs}{rhs}
-  \SetKwData{RhsW}{rhs\textsubscript{w}}
-  \SetKwData{Arg}{arg}
-  \SetKwData{ArgW}{arg\textsubscript{w}}
-  \SetKwData{Lval}{lval}
-  \SetKwData{LvalW}{lval\textsubscript{w}}
-  \SetKwData{Cond}{cond}
-  \SetKwData{CondW}{cond\textsubscript{w}}
-  \SetKwData{ExprA}{expr\textsubscript{1}}
-  \SetKwData{ExprN}{expr\textsubscript{N}}
-  \SetKwData{ExprI}{expr\textsubscript{i}}
-  \SetKwData{WidthI}{width\textsubscript{i}}
 
-  \DontPrintSemicolon
-  \SetAlgoVlined
-  \LinesNumbered
+  \newcommand\Determine[1]{\textsc{determine}(#1)}
+  \newcommand\Propagate[1]{\textsc{propagate}(#1)}
 
-  \KwIn{A SystemVerilog expression \Expr}
-  \KwOut{The self-determined width of \Expr}
-  \BlankLine
-  \Switch{\Expr}{
-    \Case{\Expr is an operand}{
-      \Return{$\Gamma\left(\Expr\right)$}\;
-    }
-    \Case(\com{$\oplus$ can be \binOp{}}){\Expr is $\Lhs\oplus\Rhs$}{
-      $\LhsW \leftarrow \Determine{\Lhs}$\;
-      $\RhsW \leftarrow \Determine{\Rhs}$\;
-      \Return{$\max\big(\LhsW, \RhsW\big)$}\;
-    }
-    \Case(\com{$\oplus$ can be \unOp{}}){\Expr is $\oplus\Arg$}{
-      $\ArgW \leftarrow \Determine{\Arg}$\;
-      \Return{\ArgW}\;
-    }
-    \Case(\com{$\oplus$ can be \compOp{}}){\Expr is $\Lhs\oplus\Rhs$}{
-      \Return{$1$}\;
-    }
-    \Case(\com{$\oplus$ can be \logicOp{}}){\Expr is $\Lhs\oplus\Rhs$}{
-      \Return{$1$}\;
-    }
-    \Case(\com{$\oplus$ can be \redOp{}}){\Expr is $\oplus\Arg$}{
-      \Return{$1$}\;
-    }
-    \Case(\com{$\oplus$ can be \shiftOp{}}){\Expr is $\Lhs\oplus\Rhs$}{
-      $\LhsW \leftarrow \Determine{\Lhs}$\;
-      \Return{\LhsW}\;
-    }
-    \Case{\Expr is $\Lval\kw{~=~}\Rhs$}{
-      $\LvalW \leftarrow \phi(\Lval)$\;
-      \Return{\LvalW}\;
-    }
-    \Case{\Expr is $\Cond\kw{~?~}\Lhs\kw{~:~}\Rhs$}{
-      $\LhsW \leftarrow \Determine{\Lhs}$\;
-      $\RhsW \leftarrow \Determine{\Rhs}$\;
-      \Return{$\max\left(\LhsW,\RhsW\right)$}\;
-    }
-    \Case{\Expr is $\kw{\{}\ExprA,\kw{~\dots~},\ExprN\kw{\}}$}{
-      \For{$i \in \{1, \dots, N\}$}{
-        $\WidthI \leftarrow \Determine{\ExprI}$\;
+  \begin{algorithm}
+    \caption{Determine}
+    \label{alg:determine}
+
+    \SetKwData{Expr}{expr}
+    \SetKwData{Lhs}{lhs}
+    \SetKwData{LhsW}{lhs\textsubscript{w}}
+    \SetKwData{Rhs}{rhs}
+    \SetKwData{RhsW}{rhs\textsubscript{w}}
+    \SetKwData{Arg}{arg}
+    \SetKwData{ArgW}{arg\textsubscript{w}}
+    \SetKwData{Lval}{lval}
+    \SetKwData{LvalW}{lval\textsubscript{w}}
+    \SetKwData{Cond}{cond}
+    \SetKwData{CondW}{cond\textsubscript{w}}
+    \SetKwData{ExprA}{expr\textsubscript{1}}
+    \SetKwData{ExprN}{expr\textsubscript{N}}
+    \SetKwData{ExprI}{expr\textsubscript{i}}
+    \SetKwData{WidthI}{width\textsubscript{i}}
+
+    \DontPrintSemicolon
+    \SetAlgoVlined
+    \LinesNumbered
+
+    \KwIn{A SystemVerilog expression \Expr}
+    \KwOut{The self-determined width of \Expr}
+    \BlankLine
+    \Switch{\Expr}{
+      \Case{\Expr is an operand}{
+        \Return{$\Gamma\left(\Expr\right)$}\;
       }
-      \Return{$\sum_{i=0}^{N}\WidthI$}\;
-    }
-    \Case{\Expr is $\kw{\{}n~\Arg\kw{\}}$}{
-      $\ArgW \leftarrow \Determine{\Arg}$\;
-      \Return{$n\times\ArgW$}\;
-    }
-  }
-\end{algorithm}
-
-\begin{algorithm}
-  \caption{Propagate}
-  \label{alg:propagate}
-
-  \SetKwData{Expr}{expr}
-  \SetKwData{TargetW}{targetWidth}
-  \SetKwData{Lhs}{lhs}
-  \SetKwData{LhsW}{lhs\textsubscript{w}}
-  \SetKwData{Rhs}{rhs}
-  \SetKwData{RhsW}{rhs\textsubscript{w}}
-  \SetKwData{Arg}{arg}
-  \SetKwData{ArgW}{arg\textsubscript{w}}
-  \SetKwData{Lval}{lval}
-  \SetKwData{LvalW}{lval\textsubscript{w}}
-  \SetKwData{Cond}{cond}
-  \SetKwData{CondW}{cond\textsubscript{w}}
-  \SetKwData{ExprA}{expr\textsubscript{1}}
-  \SetKwData{ExprN}{expr\textsubscript{N}}
-  \SetKwData{ExprI}{expr\textsubscript{i}}
-  \SetKwData{WidthI}{width\textsubscript{i}}
-
-  \DontPrintSemicolon
-  \SetAlgoVlined
-  \LinesNumbered
-
-  \KwIn{A SystemVerilog expression \Expr, A \TargetW to resize \Expr to.}
-  \KwResult{All sub-expressions of \Expr are annotated with their final width}
-  \Switch{\Expr}{
-    \Case{\Expr is an operand}{
-      Annotate \Expr with \TargetW\;
-    }
-    \Case(\com{$\oplus$ can be \binOp{}}){\Expr is $\Lhs\oplus\Rhs$}{
-      \Propagate{\Lhs, \TargetW}\;
-      \Propagate{\Rhs, \TargetW}\;
-      Annotate \Expr with \TargetW\;
-    }
-    \Case(\com{$\oplus$ can be \unOp{}}){\Expr is $\oplus\Arg$}{
-      \Propagate{\Arg, \TargetW}\;
-      Annotate \Expr with \TargetW\;
-    }
-    \Case(\com{$\oplus$ can be \compOp{}}){\Expr is $\Lhs\oplus\Rhs$}{
-      $\ArgW \leftarrow \max\left(\Determine{\Lhs}, \Determine{\Rhs}\right)$\;
-      \Propagate{\Lhs, \ArgW}\;
-      \Propagate{\Rhs, \ArgW}\;
-      Annotate \Expr with \TargetW\;
-    }
-    \Case(\com{$\oplus$ can be \logicOp{}}){\Expr is $\Lhs\oplus\Rhs$}{
-      \Propagate{\Lhs, \Determine{\Lhs}}\;
-      \Propagate{\Rhs, \Determine{\Rhs}}\;
-      Annotate \Expr with \TargetW\;
-    }
-    \Case(\com{$\oplus$ can be \redOp{}}){\Expr is $\oplus\Arg$}{
-      \Propagate{\Arg, \Determine{\Arg}}\;
-      Annotate \Expr with \TargetW\;
-    }
-    \Case(\com{$\oplus$ can be \shiftOp{}}){\Expr is $\Lhs\oplus\Rhs$}{
-      \Propagate{\Lhs, \TargetW}\;
-      \Propagate{\Rhs, \Determine{\Rhs}}\;
-      Annotate \Expr with \TargetW\;
-    }
-    \Case{\Expr is $\Lval\kw{~=~}\Rhs$}{
-      \Propagate{\Rhs, $\max\left(\phi(\Lval), \Determine{\Rhs}\right)$}\;
-      Annotate \Expr with \TargetW\;
-    }
-    \Case{\Expr is $\Cond\kw{~?~}\Lhs\kw{~:~}\Rhs$}{
-      \Propagate{\Cond, \Determine{\Cond}}\;
-      \Propagate{\Lhs, \TargetW}\;
-      \Propagate{\Rhs, \TargetW}\;
-      Annotate \Expr with \TargetW\;
-    }
-    \Case{\Expr is $\kw{\{}\ExprA,\kw{~\dots~},\ExprN\kw{\}}$}{
-      \For{$i \in \{1, \dots, N\}$}{
-        \Propagate{\ExprI, \Determine{\ExprI}}\;
+      \Case(\com{$\oplus$ can be \binOp{}}){\Expr is $\Lhs\oplus\Rhs$}{
+        $\LhsW \leftarrow \Determine{\Lhs}$\;
+        $\RhsW \leftarrow \Determine{\Rhs}$\;
+        \Return{$\max\big(\LhsW, \RhsW\big)$}\;
       }
-      Annotate \Expr with \TargetW\;
+      \Case(\com{$\oplus$ can be \unOp{}}){\Expr is $\oplus\Arg$}{
+        $\ArgW \leftarrow \Determine{\Arg}$\;
+        \Return{\ArgW}\;
+      }
+      \Case(\com{$\oplus$ can be \compOp{}}){\Expr is $\Lhs\oplus\Rhs$}{
+        \Return{$1$}\;
+      }
+      \Case(\com{$\oplus$ can be \logicOp{}}){\Expr is $\Lhs\oplus\Rhs$}{
+        \Return{$1$}\;
+      }
+      \Case(\com{$\oplus$ can be \redOp{}}){\Expr is $\oplus\Arg$}{
+        \Return{$1$}\;
+      }
+      \Case(\com{$\oplus$ can be \shiftOp{}}){\Expr is $\Lhs\oplus\Rhs$}{
+        $\LhsW \leftarrow \Determine{\Lhs}$\;
+        \Return{\LhsW}\;
+      }
+      \Case{\Expr is $\Lval\kw{~=~}\Rhs$}{
+        $\LvalW \leftarrow \phi(\Lval)$\;
+        \Return{\LvalW}\;
+      }
+      \Case{\Expr is $\Cond\kw{~?~}\Lhs\kw{~:~}\Rhs$}{
+        $\LhsW \leftarrow \Determine{\Lhs}$\;
+        $\RhsW \leftarrow \Determine{\Rhs}$\;
+        \Return{$\max\left(\LhsW,\RhsW\right)$}\;
+      }
+      \Case{\Expr is $\kw{\{}\ExprA,\kw{~\dots~},\ExprN\kw{\}}$}{
+        \For{$i \in \{1, \dots, N\}$}{
+          $\WidthI \leftarrow \Determine{\ExprI}$\;
+        }
+        \Return{$\sum_{i=0}^{N}\WidthI$}\;
+      }
+      \Case{\Expr is $\kw{\{}n~\Arg\kw{\}}$}{
+        $\ArgW \leftarrow \Determine{\Arg}$\;
+        \Return{$n\times\ArgW$}\;
+      }
     }
-    \Case{\Expr is $\kw{\{}n~\Arg\kw{\}}$}{
-      \Propagate{\Arg, \Determine{\Arg}}\;
-      Annotate \Expr with \TargetW\;
+  \end{algorithm}
+
+  \begin{algorithm}
+    \caption{Propagate}
+    \label{alg:propagate}
+
+    \SetKwData{Expr}{expr}
+    \SetKwData{TargetW}{targetWidth}
+    \SetKwData{Lhs}{lhs}
+    \SetKwData{LhsW}{lhs\textsubscript{w}}
+    \SetKwData{Rhs}{rhs}
+    \SetKwData{RhsW}{rhs\textsubscript{w}}
+    \SetKwData{Arg}{arg}
+    \SetKwData{ArgW}{arg\textsubscript{w}}
+    \SetKwData{Lval}{lval}
+    \SetKwData{LvalW}{lval\textsubscript{w}}
+    \SetKwData{Cond}{cond}
+    \SetKwData{CondW}{cond\textsubscript{w}}
+    \SetKwData{ExprA}{expr\textsubscript{1}}
+    \SetKwData{ExprN}{expr\textsubscript{N}}
+    \SetKwData{ExprI}{expr\textsubscript{i}}
+    \SetKwData{WidthI}{width\textsubscript{i}}
+
+    \DontPrintSemicolon
+    \SetAlgoVlined
+    \LinesNumbered
+
+    \KwIn{A SystemVerilog expression \Expr, A \TargetW to resize \Expr to.}
+    \KwResult{All sub-expressions of \Expr are annotated with their final width}
+    \Switch{\Expr}{
+      \Case{\Expr is an operand}{
+        Annotate \Expr with \TargetW\;
+      }
+      \Case(\com{$\oplus$ can be \binOp{}}){\Expr is $\Lhs\oplus\Rhs$}{
+        \Propagate{\Lhs, \TargetW}\;
+        \Propagate{\Rhs, \TargetW}\;
+        Annotate \Expr with \TargetW\;
+      }
+      \Case(\com{$\oplus$ can be \unOp{}}){\Expr is $\oplus\Arg$}{
+        \Propagate{\Arg, \TargetW}\;
+        Annotate \Expr with \TargetW\;
+      }
+      \Case(\com{$\oplus$ can be \compOp{}}){\Expr is $\Lhs\oplus\Rhs$}{
+        $\ArgW \leftarrow \max\left(\Determine{\Lhs}, \Determine{\Rhs}\right)$\;
+        \Propagate{\Lhs, \ArgW}\;
+        \Propagate{\Rhs, \ArgW}\;
+        Annotate \Expr with \TargetW\;
+      }
+      \Case(\com{$\oplus$ can be \logicOp{}}){\Expr is $\Lhs\oplus\Rhs$}{
+        \Propagate{\Lhs, \Determine{\Lhs}}\;
+        \Propagate{\Rhs, \Determine{\Rhs}}\;
+        Annotate \Expr with \TargetW\;
+      }
+      \Case(\com{$\oplus$ can be \redOp{}}){\Expr is $\oplus\Arg$}{
+        \Propagate{\Arg, \Determine{\Arg}}\;
+        Annotate \Expr with \TargetW\;
+      }
+      \Case(\com{$\oplus$ can be \shiftOp{}}){\Expr is $\Lhs\oplus\Rhs$}{
+        \Propagate{\Lhs, \TargetW}\;
+        \Propagate{\Rhs, \Determine{\Rhs}}\;
+        Annotate \Expr with \TargetW\;
+      }
+      \Case{\Expr is $\Lval\kw{~=~}\Rhs$}{
+        \Propagate{\Rhs, $\max\left(\phi(\Lval), \Determine{\Rhs}\right)$}\;
+        Annotate \Expr with \TargetW\;
+      }
+      \Case{\Expr is $\Cond\kw{~?~}\Lhs\kw{~:~}\Rhs$}{
+        \Propagate{\Cond, \Determine{\Cond}}\;
+        \Propagate{\Lhs, \TargetW}\;
+        \Propagate{\Rhs, \TargetW}\;
+        Annotate \Expr with \TargetW\;
+      }
+      \Case{\Expr is $\kw{\{}\ExprA,\kw{~\dots~},\ExprN\kw{\}}$}{
+        \For{$i \in \{1, \dots, N\}$}{
+          \Propagate{\ExprI, \Determine{\ExprI}}\;
+        }
+        Annotate \Expr with \TargetW\;
+      }
+      \Case{\Expr is $\kw{\{}n~\Arg\kw{\}}$}{
+        \Propagate{\Arg, \Determine{\Arg}}\;
+        Annotate \Expr with \TargetW\;
+      }
     }
-  }
-\end{algorithm}
+  \end{algorithm}
+}
 
 \bibliographystyle{splncs04}
 \bibliography{refs}
