@@ -33,6 +33,8 @@ Justification for the badges:
   - Portability:
     The artifact can be used in different environments: either inside Docker or
     natively with opam on Linux-compatible systems.
+    The source code is included in the sources.zip archive for easy browsing and
+    modifications.
 
 Requirements:
 
