@@ -52,3 +52,6 @@ time-of-build-both.log
 time-of-build-pretty.log
 
 # End of https://www.toptal.com/developers/gitignore/api/coq
+
+*.zip
+*.tar

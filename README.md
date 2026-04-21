@@ -7,9 +7,8 @@ This repository contains a Rocq formalization of SystemVerilog expression bit-wi
 ### Prerequisites
 
 - [opam](https://opam.ocaml.org)
-- Rocq 9.0.0 (recommended via an opam switch)
+- Rocq 9.2.0 (recommended via an opam switch)
 - `rocq-navi` (for `make doc`)
-- `latexmk` (optional, only for `make tex`)
 
 ### Reproducible setup and proof checking
 
@@ -17,12 +16,12 @@ Run the following commands from the repository root:
 
 ```sh
 # Create and activate a dedicated Rocq switch
-opam switch create verilog-typing --packages rocq-prover.9.0.0
+opam switch create verilog-typing --packages rocq-core.9.2.0
 eval "$(opam env --switch=verilog-typing --set-switch)"
 
 # Add the Rocq package repository and install doc dependency
 opam repo add rocq-released https://rocq-prover.org/opam/released
-opam install rocq-navi
+opam install rocq-navi rocq-prover
 
 # Required for artifact evaluation (proof checking)
 make build
@@ -32,9 +31,6 @@ make
 
 # Explicit documentation target
 make doc
-
-# Optional: build LaTeX PDFs under formalisation/ and proposal/
-make tex
 
 # Optional cleanup
 make clean

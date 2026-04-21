@@ -96,7 +96,7 @@ Module ExprPath.
   .
 
   (**md The shorthand `e @[ p ]` denotes `sub_expr e p`. *)
-  Notation "e @[ p ]" := (sub_expr e p) (at level 20).
+  Notation "e @[ p ]" := (sub_expr e p) (at level 1).
 
   (**md `IsPath_is_sub_expr`: if `p` is a valid path within `e`, then following `p`
      via `sub_expr` yields some subexpression. *)

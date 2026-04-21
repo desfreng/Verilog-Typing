@@ -135,6 +135,8 @@ Module TaggedExpr.
 
   End TaggedExpr_def.
 
+  Register Scheme TaggedExpr_ind as ind_nodep for TaggedExpr.
+
   Arguments TOperand {T}.
   Arguments TBinOp {T}.
   Arguments TUnOp {T}.

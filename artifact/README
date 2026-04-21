@@ -1,0 +1,171 @@
+# CAV 2026 Artifact
+
+Paper title: A mechanised, bidirectional type system for bit-width determination in SystemVerilog
+
+Claimed badges: Available + Functional + Reusable
+
+Justification for the badges:
+
+- Functional:
+  The artifact is self-contained and reproduces the core technical claims of
+  the paper by checking all Rocq developments and the extracted algorithm.
+  The full proof scripts are included.
+  It replicates:
+  - Core formal development compiles: Smoke test point (1), Full review point (1)
+  - Equivalence proof between rule system and specification (Theorem 2): Smoke test point (2), Full review point (2)
+  - Algorithm correctness theorem (Theorem 3): Smoke test point (3), Full review point (3)
+  - Verified extraction of the typing algorithm to OCaml: Smoke test point (4), Full review point (4)
+  - Documentation generation over the proved development: Smoke test point (5), Full review point (5)
+
+- Reusable:
+  The artifact is reusable beyond the paper evaluation.
+  - License and reuse rights:
+    The artifact is distributed under the MIT license,
+    which allows reuse, repurposing, modification, and redistribution.
+  - Dependencies and maintenance:
+    Dependencies are documented, proof checking relies on standard Rocq tooling.
+  - Reuse beyond paper claims:
+    The development is modular and can be reused to extend the language,
+    add rules, or adapt extraction.
+  - Interfaces and extensibility:
+    The source is open and a generated documentation is generated with the
+    artifact.
+  - Portability:
+    The artifact can be used in different environments: either inside Docker or
+    natively with opam on Linux-compatible systems.
+
+Requirements:
+
+- RAM: 8 GB recommended (4 GB minimum)
+- CPU cores: 2+ recommended (1 minimum)
+- Time (smoke test): 10 minutes
+- Time (full review): 10 minutes
+
+external connectivity: NO
+
+---
+
+## ** SMOKE TEST **
+
+The smoke test checks that the project builds and that key claims can be
+validated quickly.
+
+Run the following to load the Docker image:
+
+    docker load < docker-image.tar.gz
+
+After that, run the image using
+
+    docker run -v "`pwd`/output:/workspace/doc" --rm -it docker-verilog
+
+> Ensure that the "`pwd`/output" directory is writable for "other" (chmod o+rw "`pwd`/output").
+
+The command above starts the docker container and places you in a bash
+environment, where you can inspect the source code or run the experiments. `-v`
+option will mount `output` folder in your current directory to the
+corresponding folder within the container where the generated documentation will be
+stored. This will allow you to view the documentation even after the
+container has stopped running. `--rm` is an optional flag that creates a
+disposable container that will be deleted upon exit.
+
+## Smoke-test commands
+
+From the repository root:
+
+    make build
+
+Expected runtime: usually under 10 minutes on a standard laptop.
+Expected result: build ends with "Build complete." and no proof errors.
+
+1.  Check that all formalization files type-check:
+
+        make build
+
+    Expected result: successful completion (exit code 0).
+
+2.  Check the theorem connecting typing rules and specification (Theorem 2):
+
+        make -f RocqMakefile theories/Equiv.vo
+
+    Expected result: successful completion (exit code 0).
+
+3.  Check algorithm correctness proof (Theorem 3):
+
+        make -f RocqMakefile theories/Algo.vo
+
+    Expected result: successful completion (exit code 0).
+
+4.  Check verified extraction of the algorithm:
+
+        make -f RocqMakefile theories/Extr.vo
+        ls extraction/type.ml
+
+    Expected result: `extraction/type.ml` exists.
+
+5.  Check proof documentation generation:
+
+        make doc
+        ls doc/index.html
+
+    Expected result: `doc/index.html` exists.
+
+If a step fails, re-run with:
+
+    make clean
+    make build
+
+and include the failing command output in the review.
+
+---
+
+## ** FULL REVIEW **
+
+This section provides a more complete checklist that validates all main claims.
+
+## Setup
+
+Use the Docker setup from the smoke test.
+
+Run from the repository root:
+
+    make clean
+    make build
+
+Expected runtime: usually under 10 minutes on a standard laptop.
+
+1.  Reproduce the complete proof checking pipeline:
+
+        make build
+
+    This checks all files in `theories/`.
+
+2.  Validate specification-to-type-system equivalence results:
+
+        make -f RocqMakefile theories/Equiv.vo
+
+    This covers the lemmas/theorem proving equivalence between the LRM-style specification and the bidirectional type system.
+
+3.  Validate algorithm correctness:
+
+        make -f RocqMakefile theories/Algo.vo
+
+    This checks the theorem showing correctness of the executable typing algorithm with respect to the formal system.
+
+4.  Validate executable extraction output:
+
+        make -f RocqMakefile theories/Extr.vo
+        wc -l extraction/type.ml
+
+    The extracted OCaml file should be present and non-empty.
+
+5.  Validate generated documentation artifacts:
+
+        make doc
+        ls doc/index.html
+
+    Open `doc/index.html` in a browser to inspect the generated dependency-aware proof documentation.
+
+## Expected reviewer outcome
+
+All mandatory points 1-5 should finish without errors and with exit code 0.
+No internet access is required.

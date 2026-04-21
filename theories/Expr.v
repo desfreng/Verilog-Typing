@@ -122,6 +122,10 @@ Module Expr.
   Definition Expr_ind (P: Expr -> Prop) := Expr_rect P.
   Definition Expr_rec (P: Expr -> Set) := Expr_rect P.
 
+  Register Scheme Expr_rect as rect_nodep for Expr.
+  Register Scheme Expr_ind as ind_nodep for Expr.
+  Register Scheme Expr_rec as rec_nodep for Expr.
+
   (**md ## Decidability of Expression Equality
      Equality between two `Expr` terms is decidable by structural comparison. *)
   Theorem Expr_eq_dec : forall (e f: Expr), {e = f} + {e <> f}.

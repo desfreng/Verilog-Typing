@@ -104,7 +104,7 @@ Module TaggedExprPath.
   .
 
   (**md Notation for tagged subexpression lookup. *)
-  Notation "e @@[ p ]" := (sub_typed_expr e p) (at level 20).
+  Notation "e @@[ p ]" := (sub_typed_expr e p) (at level 1).
 
   (**md Empty-path lookup returns the full expression. *)
   Lemma sub_typed_expr_nil: forall T (e: TaggedExpr T), e @@[[]] = Some e.

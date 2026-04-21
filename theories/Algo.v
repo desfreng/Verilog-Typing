@@ -267,8 +267,8 @@ Module Algo.
       - assert (fc p = None).
         { destruct (fc p) eqn:Hfc; try reflexivity. exfalso. apply n.
           rewrite (check_f_path _ _ _ Hc). firstorder. }
-        assert (propagate e s @@[ p] = None).
-        { destruct (propagate e s @@[ p]) eqn:Hpr; try reflexivity. exfalso.
+        assert ((propagate e s) @@[p] = None).
+        { destruct ((propagate e s) @@[p]) eqn:Hpr; try reflexivity. exfalso.
           apply n. eapply propagate_shape2.
           apply (sub_typed_expr_valid _ _ _ _ Hpr). }
         unfold size_at. rewrite H1. assumption.

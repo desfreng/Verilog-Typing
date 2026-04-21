@@ -645,7 +645,7 @@ Module TypeSystem.
   Proof.
     Ltac _inv_se_f :=
       match goal with
-      | [ H: _ _ @[ _ ] = _ |- _ ] => inv H
+      | [ H: (_ _) @[ _ ] = _ |- _ ] => inv H
       end
     .
     induction e using Expr_ind; split; intros; repeat splitHyp;
