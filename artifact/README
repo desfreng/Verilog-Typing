@@ -52,13 +52,15 @@ validated quickly.
 
 Run the following to load the Docker image:
 
-    docker load < docker-image.tar.gz
+    docker load < docker-image.tar.zstd
 
-After that, run the image using
+After that, create a output directory writable to other then run the docker image:
 
+    mkdir "`pwd`/output:/workspace/doc"
+    chmod o+rw "`pwd`/output:/workspace/doc"
     docker run -v "`pwd`/output:/workspace/doc" --rm -it docker-verilog
 
-> Ensure that the "`pwd`/output" directory is writable for "other" (chmod o+rw "`pwd`/output").
+> Ensure that the "`pwd`/output" directory is writable for "other".
 
 The command above starts the docker container and places you in a bash
 environment, where you can inspect the source code or run the experiments. `-v`

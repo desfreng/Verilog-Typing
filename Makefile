@@ -3,7 +3,7 @@ ROCQ_DIR     := theories
 DEPEND_FILE  := .depend.d
 EXTR_DIR     := extraction
 
-.PHONY: all build dep-file doc clean docker artifact
+.PHONY: all build dep-file doc clean artifact .FORCE
 
 all: build doc
 
@@ -31,12 +31,19 @@ clean: RocqMakefile
 	$(MAKE) --no-print-directory -f RocqMakefile clean
 	-rm RocqMakefile RocqMakefile.conf
 	-rm -rf $(DOC_DIR) $(EXTR_DIR)
+	-rm artifact/sources.zip artifact/docker-image.tar.zstd artifact.zip
 	@echo "Clean complete."
 
-docker:
-	docker build . -t docker-verilog
-	docker save docker-verilog | gzip -9 > artifact/docker-image.tar.gz
-
-artifact:
+artifact/sources.zip: .FORCE
 	git archive --format=zip --output artifact/sources.zip main
-	zip -9 -r artifact.zip artifact/
+
+artifact/docker-image.tar.zstd: artifact/sources.zip Dockerfile
+	docker build . -t docker-verilog
+	docker save docker-verilog | zstd --ultra -22 -T10 > artifact/docker-image.tar.zstd
+
+artifact.zip: artifact/docker-image.tar.zstd
+	zip -0 -r artifact.zip artifact/
+
+artifact: artifact.zip
+
+.FORCE:
