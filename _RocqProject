@@ -1,2 +1,2 @@
--R src Verilog
-src
+-R theories Verilog
+theories
